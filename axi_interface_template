@@ -1,0 +1,67 @@
+      //================== This is an AXI4-Lite slave interface ==================
+        
+    // "Specify write address"              -- Master --    -- Slave --
+    input[AW-1:0]                           S_AXI_AWADDR,   
+    input                                   S_AXI_AWVALID,  
+    output                                                  S_AXI_AWREADY,
+    input[2:0]                              S_AXI_AWPROT,
+
+    // "Write Data"                         -- Master --    -- Slave --
+    input[31:0]                             S_AXI_WDATA,      
+    input                                   S_AXI_WVALID,
+    input[3:0]                              S_AXI_WSTRB,
+    output                                                  S_AXI_WREADY,
+
+    // "Send Write Response"                -- Master --    -- Slave --
+    output[1:0]                                             S_AXI_BRESP,
+    output                                                  S_AXI_BVALID,
+    input                                   S_AXI_BREADY,
+
+    // "Specify read address"               -- Master --    -- Slave --
+    input[AW-1:0]                           S_AXI_ARADDR,     
+    input                                   S_AXI_ARVALID,
+    input[2:0]                              S_AXI_ARPROT,     
+    output                                                  S_AXI_ARREADY,
+
+    // "Read data back to master"           -- Master --    -- Slave --
+    output[31:0]                                            S_AXI_RDATA,
+    output                                                  S_AXI_RVALID,
+    output[1:0]                                             S_AXI_RRESP,
+    input                                   S_AXI_RREADY
+    //==========================================================================
+
+
+
+
+
+
+    //====================  An AXI-Lite Master Interface  ======================
+
+    // "Specify write address"          -- Master --    -- Slave --
+    output[31:0]                        M_AXI_AWADDR,   
+    output                              M_AXI_AWVALID,  
+    input                                               M_AXI_AWREADY,
+
+    // "Write Data"                     -- Master --    -- Slave --
+    output[31:0]                        M_AXI_WDATA,      
+    output                              M_AXI_WVALID,
+    output[3:0]                         M_AXI_WSTRB,
+    input                                               M_AXI_WREADY,
+
+    // "Send Write Response"            -- Master --    -- Slave --
+    input[1:0]                                          M_AXI_BRESP,
+    input                                               M_AXI_BVALID,
+    output                              M_AXI_BREADY,
+
+    // "Specify read address"           -- Master --    -- Slave --
+    output[31:0]                        M_AXI_ARADDR,     
+    output                              M_AXI_ARVALID,
+    input                                               M_AXI_ARREADY,
+
+    // "Read data back to master"       -- Master --    -- Slave --
+    input[31:0]                                         M_AXI_RDATA,
+    input                                               M_AXI_RVALID,
+    input[1:0]                                          M_AXI_RRESP,
+    output                              M_AXI_RREADY
+    //==========================================================================
+);
