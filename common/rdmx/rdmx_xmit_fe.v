@@ -9,6 +9,8 @@ module rdmx_xmit_fe #
 ) 
 (
     input clk, resetn,
+
+    output addr_fifo_debug,
     
     //=================  This is the main AXI4-slave interface  ================
     
@@ -122,16 +124,27 @@ end
 //=============================================================================
 
 
+//=============================================================================
+// While debugging, it is occasionally useful to know if the input stream
+// is attempting to write to the "address" FIFO before that FIFO is ready
+// to receive data.   This is NOT an error because we only allow the 
+// transaction to complete when both the address and data FIFOs are ready
+// to receive
+assign addr_fifo_debug = S_AXI_AWVALID & (AXIS_ADDR_TREADY == 0);
+//=============================================================================
+
 // Output stream "target address" is driven directly from the AW-channel
+// We only accept data when both the data and address FIFOs are ready to receive
 assign AXIS_ADDR_TDATA  = S_AXI_AWADDR;
-assign AXIS_ADDR_TVALID = S_AXI_AWVALID;
-assign S_AXI_AWREADY    = AXIS_ADDR_TREADY;
+assign AXIS_ADDR_TVALID = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & S_AXI_AWVALID;
+assign S_AXI_AWREADY    = AXIS_DATA_TREADY & AXIS_ADDR_TREADY;
 
 // Output stream "packet data" is driven directly from the W-channel
+// We only accept data when both the data and address FIFOs are ready to receive
 assign AXIS_DATA_TDATA  = S_AXI_WDATA;
 assign AXIS_DATA_TLAST  = S_AXI_WLAST;
-assign AXIS_DATA_TVALID = S_AXI_WVALID;
-assign S_AXI_WREADY     = AXIS_DATA_TREADY;
+assign AXIS_DATA_TVALID = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & S_AXI_WVALID;
+assign S_AXI_WREADY     = AXIS_DATA_TREADY & AXIS_ADDR_TREADY;
 
 // Output stream "packet length" gets written to on the last data-cycle
 // of the incoming packet

@@ -9,6 +9,11 @@
 // 12-Jan-24  DWW  1001  Changed name to RDMX
 //
 // 19-Feb-24  DWW  1002  Split front-end from back-end and added mixed clocks
+//
+// 04-May-24  DWW  1003  Fixed bug in rdmx_xmit_fe.v that would very occassionally
+//                       attempt to write to the address FIFO before it was ready to
+//                       receive data.   Added "addr_fifo_debug" for future 
+//                       experiments
 //====================================================================================
 
 /*
@@ -90,7 +95,7 @@ module rdmx_xmit #
     (* X_INTERFACE_INFO      = "xilinx.com:signal:clock:1.0 dst_clk CLK" *)
     (* X_INTERFACE_PARAMETER = "ASSOCIATED_BUSIF AXIS_TX" *)
     input dst_clk,
-    
+  
    //=================  This is the main AXI4-slave interface  ================
     
     // "Specify write address"              -- Master --    -- Slave --
@@ -151,7 +156,12 @@ module rdmx_xmit #
     //==========================================================================
 
     // This is high whenever AXIS_DATA is trying to write to a full FIFO
-    output packet_data_fifo_full
+    output packet_data_fifo_full,
+
+    // This is used for debugging issues with the channel 0 address FIFO.   It is safe 
+    // to ignore this signal or leave it unconnected.
+    output addr_fifo_debug
+
 );
 
 // Wires to connect the packet-length stream
@@ -169,8 +179,6 @@ wire [DATA_WBITS-1:0] AXIS_DATA_TDATA;
 wire                  AXIS_DATA_TLAST;
 wire                  AXIS_DATA_TVALID;
 wire                  AXIS_DATA_TREADY;
-
-
 
 rdmx_xmit_fe #
 (
@@ -228,7 +236,9 @@ front_end
     .AXIS_DATA_TDATA    (AXIS_DATA_TDATA ),
     .AXIS_DATA_TLAST    (AXIS_DATA_TLAST ),
     .AXIS_DATA_TVALID   (AXIS_DATA_TVALID),
-    .AXIS_DATA_TREADY   (AXIS_DATA_TREADY)
+    .AXIS_DATA_TREADY   (AXIS_DATA_TREADY),
+
+    .addr_fifo_debug    (addr_fifo_debug)
 );
 
 
