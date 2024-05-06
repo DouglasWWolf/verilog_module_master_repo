@@ -8,7 +8,9 @@
 //
 // 16-Apr-24  DWW     2  sys_reset_out
 //
-// 25-Apr-24  DWW     3  Added "sys_reset_in"
+// 25-Apr-24  DWW     3  Added "sys_reset_in" (synchronous to rx_clk)
+//
+// 06-May-24  DWW     4  Added "sys_resetn_out" (synchronous to rx_clk)
 //===================================================================================================
 
 /*
@@ -67,7 +69,7 @@ module cmac_control # (parameter RSFEC = 1)
     input      stat_rx_aligned,
 
     // This is asserted to drive the reset input of the RX side of the transcievers
-    output     sys_reset_out,
+    output     sys_reset_out, sys_resetn_out,
 
     // "axis_rx" from the CMAC connects here
     input[511:0]  rx_in_tdata,
@@ -193,6 +195,7 @@ assign rx_out_tvalid = rx_in_tvalid & (silence_timer == 0);
 
 // The CMAC is in reset when the timer is non-zero
 assign sys_reset_out = (reset_timer != 0);
+assign sys_resetn_out = ~sys_reset_out;
 
 //=============================================================================
 // This state machine waits for alignment to be acheived.  If a timeout
