@@ -34,8 +34,10 @@ module rdmx_pkt_filter #
     //==========================================================================
     input[DATA_WBITS-1:0]  AXIS_IN_TDATA,
     input[DATA_WBYTS-1:0]  AXIS_IN_TKEEP,
-    input                  AXIS_IN_TVALID,
     input                  AXIS_IN_TLAST,
+    input                  AXIS_IN_TUSER,
+    input                  AXIS_IN_TVALID,
+
     output                 AXIS_IN_TREADY,
     //==========================================================================
 
@@ -45,8 +47,9 @@ module rdmx_pkt_filter #
     //==========================================================================
     output[DATA_WBITS-1:0] AXIS_OUT_TDATA,
     output[DATA_WBYTS-1:0] AXIS_OUT_TKEEP,
-    output                 AXIS_OUT_TVALID,
     output                 AXIS_OUT_TLAST,
+    output                 AXIS_OUT_TUSER,
+    output                 AXIS_OUT_TVALID,    
     input                  AXIS_OUT_TREADY
     //==========================================================================
 
@@ -57,6 +60,7 @@ localparam RDMX_MAGIC = 16'h0122;
 
 // The entire output stream (other than TVALID) is driven by the input stream
 assign AXIS_OUT_TDATA = AXIS_IN_TDATA;
+assign AXIS_OUT_TUSER = AXIS_IN_TUSER;
 assign AXIS_OUT_TKEEP = AXIS_IN_TKEEP;
 assign AXIS_OUT_TLAST = AXIS_IN_TLAST;
 assign AXIS_IN_TREADY = AXIS_OUT_TREADY;
