@@ -227,8 +227,8 @@ localparam[15:0] udp_checksum   = 0;
 // 2 bytes of magic number
 localparam[15:0] rdmx_magic = 16'h0122;
 
-// 12 bytes of reserved area in the RDMX header
-localparam[12*8-1:0] rdmx_reserved   = 0;
+// 10 bytes of reserved area in the RDMX header
+localparam[10*8-1:0] rdmx_reserved   = 0;
 
 // Compute both the IPv4 packet length and UDP packet length
 wire[15:0]       ip4_length     = IP_HDR_LEN + UDP_HDR_LEN + RDMX_HDR_LEN + payload_length;
@@ -250,8 +250,11 @@ wire[15:0] ip4_checksum = ~(ip4_cs32[15:0] + ip4_cs32[31:16]);
 
 
 // This is the target address of this outgoing packet
-wire[ADDR_WBITS-1:0] rdmx_target_addr = (ftaout_tready & ftaout_tvalid) ?
-                                        ftaout_tdata : ftaout_tdata_latched;
+wire[63:0] rdmx_target_addr = (ftaout_tready & ftaout_tvalid) ?
+                               ftaout_tdata : ftaout_tdata_latched;
+
+// This number increments by 1 on every packet
+reg[15:0] rdmx_seq_num;
 
 // This is the 64-byte packet header for an RDMX packet
 wire[DATA_WBITS-1:0] pkt_header =
@@ -282,6 +285,7 @@ wire[DATA_WBITS-1:0] pkt_header =
     // RDMX header fields - 22 bytes
     rdmx_magic,
     rdmx_target_addr,
+    rdmx_seq_num,
     rdmx_reserved
 };
 
@@ -342,16 +346,19 @@ assign packet_data_fifo_full = AXIS_DATA_TVALID & ~AXIS_DATA_TREADY;
 assign fplout_tready = (dst_resetn == 1 & fsm_state == 1 & AXIS_TX_TREADY);
 
 always @(posedge dst_clk) begin
+    
     if (dst_resetn == 0) begin
         ftaout_tready  <= 0;
         fsm_state      <= 0;
+    end
     
-    end else case(fsm_state) 
+    else case(fsm_state) 
         
         // Here we're coming out of reset
         0:  begin
                 ftaout_tready <= 1;
                 fsm_state     <= 1;
+                rdmx_seq_num  <= 1;
             end
 
 
@@ -369,11 +376,11 @@ always @(posedge dst_clk) begin
                     ftaout_tready        <= 0;                     
                 end
 
-
                 // If a packet-length arrives, the RDMX packet header is immediately
                 // emitted, and we go to state 2 to wait for the packet to complete
                 if (fplout_tready & fplout_tvalid) begin
                     fplout_tdata_latched <= fplout_tdata;
+                    rdmx_seq_num         <= rdmx_seq_num + 1;
                     fsm_state            <= 2;
                 end
             end
