@@ -5,6 +5,9 @@
 //   Date     Who   Ver  Changes
 //=============================================================================
 // 15-Feb-24  DWW     1  Initial creation
+//
+// 08-Feb-24  DWW     2  TVALID and TREADY signals now deassert while resetn
+//                       is asserted
 //=============================================================================
 
 /*
@@ -59,15 +62,15 @@ assign AXIS_OUT0_TDATA = (output_select == 0) ? AXIS_IN_TDATA : 0;
 assign AXIS_OUT1_TDATA = (output_select == 1) ? AXIS_IN_TDATA : 0;
 
 // The output TVALID is driven by the input TVALID, gated by "output_select"
-assign AXIS_OUT0_TVALID = AXIS_IN_TVALID & (output_select == 0);
-assign AXIS_OUT1_TVALID = AXIS_IN_TVALID & (output_select == 1);
+assign AXIS_OUT0_TVALID = AXIS_IN_TVALID & (output_select == 0) & (resetn == 1);
+assign AXIS_OUT1_TVALID = AXIS_IN_TVALID & (output_select == 1) & (resetn == 1);
 
 // The output TLAST signals are asserted on the last cycle of every packet
 assign AXIS_OUT0_TLAST = last_cycle & AXIS_OUT0_TVALID;
 assign AXIS_OUT1_TLAST = last_cycle & AXIS_OUT1_TVALID;
 
 // The TREADY signal on the input stream is driven by one of the output streams
-assign AXIS_IN_TREADY = (output_select == 0) ? AXIS_OUT0_TREADY : AXIS_OUT1_TREADY;
+assign AXIS_IN_TREADY = (resetn == 1) & ((output_select == 0) ? AXIS_OUT0_TREADY : AXIS_OUT1_TREADY);
 
 // Create some convenient shortcuts to the output TVALID, TLAST, and TREADY
 wire axis_out_tvalid = (output_select == 0) ? AXIS_OUT0_TVALID : AXIS_OUT1_TVALID;

@@ -5,6 +5,9 @@
 //   Date     Who   Ver  Changes
 //=============================================================================
 // 15-Feb-24  DWW     1  Initial creation
+//
+// 08-May-24  DWW     2  Now forcing TREADY and TVALID low signals to deassert
+//                       when resetn is asserted 
 //=============================================================================
 
 /*
@@ -68,15 +71,14 @@ module mindy_if #
 
 // Frame data passes straight through to the output stream. 
 assign AXIS_FD_OUT_TDATA  = AXIS_FD_IN_TDATA;
-assign AXIS_FD_OUT_TVALID = AXIS_FD_IN_TVALID;
-assign AXIS_FD_IN_TREADY  = AXIS_FD_OUT_TREADY;
-
+assign AXIS_FD_OUT_TVALID = AXIS_FD_IN_TVALID  & (resetn == 1);
+assign AXIS_FD_IN_TREADY  = AXIS_FD_OUT_TREADY & (resetn == 1);
 
 // The "tready" signals from the two meta-data FIFOs
 wire fifo_md0_in_tready, fifo_md1_in_tready;
 
 // We can accept incoming meta-data when both FIFOs are ready
-assign AXIS_MD_IN_TREADY = fifo_md0_in_tready & fifo_md1_in_tready;
+assign AXIS_MD_IN_TREADY = fifo_md0_in_tready & fifo_md1_in_tready & (resetn == 1);
 
 // This is asserted during a valid handshake on the metadata input stream
 wire md_in_handshake = AXIS_MD_IN_TREADY & AXIS_MD_IN_TVALID;

@@ -320,7 +320,7 @@ assign AXIS_TX_TVALID = (fsm_state == 1) ? (fplout_tvalid & fplout_tready)
                       : (fsm_state == 2) ? fpdout_tvalid
                       : 0;
 
-assign fpdout_tready  = (fsm_state == 2 & AXIS_TX_TREADY);
+assign fpdout_tready  = (dst_resetn == 1) & (fsm_state == 2) & AXIS_TX_TREADY;
 //=====================================================================================================================
 
 // This goes high to indicate that the packet data FIFO is full
@@ -348,8 +348,8 @@ assign fplout_tready = (dst_resetn == 1 & fsm_state == 1 & AXIS_TX_TREADY);
 always @(posedge dst_clk) begin
     
     if (dst_resetn == 0) begin
-        ftaout_tready  <= 0;
-        fsm_state      <= 0;
+        ftaout_tready <= 0;
+        fsm_state     <= 0;
     end
     
     else case(fsm_state) 
@@ -357,8 +357,8 @@ always @(posedge dst_clk) begin
         // Here we're coming out of reset
         0:  begin
                 ftaout_tready <= 1;
-                fsm_state     <= 1;
                 rdmx_seq_num  <= 1;
+                fsm_state     <= 1;
             end
 
 

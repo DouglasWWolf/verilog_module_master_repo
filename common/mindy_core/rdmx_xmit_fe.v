@@ -137,14 +137,14 @@ assign addr_fifo_debug = S_AXI_AWVALID & (AXIS_ADDR_TREADY == 0);
 // We only accept data when both the data and address FIFOs are ready to receive
 assign AXIS_ADDR_TDATA  = S_AXI_AWADDR;
 assign AXIS_ADDR_TVALID = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & S_AXI_AWVALID;
-assign S_AXI_AWREADY    = AXIS_DATA_TREADY & AXIS_ADDR_TREADY;
+assign S_AXI_AWREADY    = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & (resetn == 1);
 
 // Output stream "packet data" is driven directly from the W-channel
 // We only accept data when both the data and address FIFOs are ready to receive
 assign AXIS_DATA_TDATA  = S_AXI_WDATA;
 assign AXIS_DATA_TLAST  = S_AXI_WLAST;
 assign AXIS_DATA_TVALID = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & S_AXI_WVALID;
-assign S_AXI_WREADY     = AXIS_DATA_TREADY & AXIS_ADDR_TREADY;
+assign S_AXI_WREADY     = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & (resetn == 1);
 
 // Output stream "packet length" gets written to on the last data-cycle
 // of the incoming packet
