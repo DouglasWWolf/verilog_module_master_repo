@@ -46,8 +46,8 @@ module cmac_control # (parameter RSFEC = 1)
     (* X_INTERFACE_PARAMETER = "ASSOCIATED_RESET rx_reset_out:rx_resetn_out:reset_rx_datapath, FREQ_HZ 322265625" *)
     input rx_clk,
 
-    (* X_INTERFACE_INFO      = "xilinx.com:signal:reset:1.0 sys_reset_in RST" *)
-    (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_HIGH"                         *)
+    (* X_INTERFACE_INFO      = "xilinx.com:signal:reset:1.0 sys_resetn_in RST" *)
+    (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_LOW "                         *)
     input sys_resetn_in,
 
     (* X_INTERFACE_INFO = "xilinx.com:*:rs_fec_ports:2.0 rs_fec ctl_rx_rsfec_enable" *)
