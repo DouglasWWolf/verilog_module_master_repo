@@ -15,7 +15,7 @@
 
      (1) Outputs them on the M_AXI memory-mapped AXI interface
      (2) After outputting a full frame, it outputs 128-byte "meta-data"
-     (3) It then outputs a 4-byte "frame_count"
+     (3) It then outputs a 4-byte "frame count"
 
      When writing frame data, the addresses they are written to are in a circular ring
      buffer.   Meta-data are written to a separate ring buffer.
@@ -28,6 +28,9 @@ module rdmx_shim #
 )
 (
     input clk, resetn,
+
+    // The number of frames that have been output
+    output reg[31:0] FRAME_COUNT,
 
     // Size of an outgoing packet (sans header), in bytes
     input[15:0] PACKET_SIZE,
@@ -106,7 +109,6 @@ module rdmx_shim #
     //==========================================================================
 
     // These are for debugging with an ILA
-    output reg[31:0] frame_count,
     output           eof
 );
 
@@ -249,7 +251,7 @@ always @* begin
         OM_FD   :   M_AXI_WDATA = AXIS_FD_TDATA;
         OM_MD1  :   M_AXI_WDATA = metadata[0];
         OM_MD2  :   M_AXI_WDATA = metadata[1];
-        OM_FC   :   M_AXI_WDATA = frame_count;
+        OM_FC   :   M_AXI_WDATA = FRAME_COUNT + 1;
         default :   M_AXI_WDATA = 0;
     endcase
 end
@@ -446,7 +448,7 @@ end
 //    fsm_state (and therefore, "output_mode")
 //    beat
 //    packet_count
-//    frame_count
+//    FRAME_COUNT
 //=============================================================================
 reg[31:0] packet_count;
 
@@ -457,7 +459,8 @@ always @(posedge clk) begin
     fetch_metadata <= 0;
 
     if (resetn == 0) begin
-        fsm_state <= FSM_RESET;
+        fsm_state   <= FSM_RESET;
+        FRAME_COUNT <= 0;
 
     end else case(fsm_state)
 
@@ -467,7 +470,7 @@ always @(posedge clk) begin
         FSM_START:
             begin
                 beat         <= 0;
-                frame_count  <= 1;
+                FRAME_COUNT  <= 0;
                 packet_count <= 1;
                 fsm_state    <= FSM_XFER_PACKET;
             end
@@ -504,7 +507,7 @@ always @(posedge clk) begin
         // Wait for the frame-counter to be output
         FSM_OUTPUT_FC:
             if (M_AXI_WVALID & M_AXI_WREADY) begin
-                frame_count  <= frame_count + 1;
+                FRAME_COUNT  <= FRAME_COUNT + 1;
                 packet_count <= 1;
                 fsm_state    <= FSM_XFER_PACKET;
             end
