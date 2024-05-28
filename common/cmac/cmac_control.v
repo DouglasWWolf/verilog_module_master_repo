@@ -17,6 +17,9 @@
 //                       sys_reset/resetn_out changed to rx_reset/resetn_out
 //
 //                       Added "rx_datapath_reset" signal
+//
+// 27-May-24  DWW     6  Now exporting the "sync_rx_aligned" signal
+//                       Now driving the tx_precursor setting on the transceivers
 //===================================================================================================
 
 /*
@@ -36,11 +39,13 @@
         Xilinx PG203
 
     (4) Provides a reset/resetn signal that is synchronous to rx_clk
+
+    (5) Drives the tx_precursor setting for the transceivers
     
 
 */
   
-module cmac_control # (parameter RSFEC = 1)
+module cmac_control # (parameter RSFEC = 1, parameter[4:0] TX_PRECURSOR = 5'b00000)
 (
     (* X_INTERFACE_INFO      = "xilinx.com:signal:clock:1.0 rx_clk CLK"           *)
     (* X_INTERFACE_PARAMETER = "ASSOCIATED_RESET rx_reset_out:rx_resetn_out:reset_rx_datapath, FREQ_HZ 322265625" *)
@@ -71,7 +76,10 @@ module cmac_control # (parameter RSFEC = 1)
     (* X_INTERFACE_INFO = "xilinx.com:*:ctrl_ports:2.0 ctl_rx ctl_enable" *)
     output ctl_rx_enable,
 
-    // This comes from the stat_rx interface of the CMAC
+    (* X_INTERFACE_INFO = "xilinx.com:*:drp_ports:2.0 gt_trans_debug gt_txprecursor" *)
+    output[19:0] gt_txprecursor,
+
+    (* X_INTERFACE_INFO = "xilinx.com:*:statistics_ports:2.0 stat_rx stat_rx_aligned" *)
     input      stat_rx_aligned,
 
     // This is a resetn signal, synchronous to rx_clk
@@ -87,10 +95,18 @@ module cmac_control # (parameter RSFEC = 1)
     // Tie this to gtwiz_reset_rx_datapath on the CMAC
     (* X_INTERFACE_INFO      = "xilinx.com:signal:reset:1.0 reset_rx_datapath RST" *)
     (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_HIGH "                        *)
-    output     reset_rx_datapath
+    output     reset_rx_datapath,
+
+    // stat_rx_aligned, synchronized to rx_clk
+    output     sync_rx_aligned
 
 );
 
+//=============================================================================
+// Select the desired amount of transceiver signal pre-emphasis
+//=============================================================================
+assign gt_txprecursor = {4{TX_PRECURSOR}};
+//=============================================================================
 
 //=============================================================================
 // The tx_enable and "send remote fault indicator" depend on whether or not
@@ -133,7 +149,6 @@ assign rx_reset_out = ~rx_resetn_out;
 //=============================================================================
 // Synchronize "stat_rx_aligned" into "sync_rx_aligned"
 //=============================================================================
-wire sync_rx_aligned;
 xpm_cdc_single #
 (
     .DEST_SYNC_FF  (4),   
