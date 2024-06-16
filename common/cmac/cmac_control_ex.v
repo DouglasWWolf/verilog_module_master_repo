@@ -22,6 +22,8 @@
 //                       Now driving the tx_precursor setting on the transceivers
 //
 // 08-Jun-24  DWW     7  Added "sys_reset_out", rsfec_enable, and tx_pre
+//
+// 15-Jun-24  DWW     8  Now controlling gt_txdiffctrl
 //===================================================================================================
 
 /*
@@ -44,10 +46,11 @@
 
     (5) Drives the tx_precursor setting for the transceivers
     
+    (6) Drives the tx_diffctrl setting for the transceivers
 
 */
   
-module cmac_control_ex 
+module cmac_control_ex # (parameter[4:0] TX_DIFF = 5'b11000)
 (
     (* X_INTERFACE_INFO      = "xilinx.com:signal:clock:1.0 rx_clk CLK"           *)
     (* X_INTERFACE_PARAMETER = "ASSOCIATED_RESET rx_reset_out:rx_resetn_out:reset_rx_datapath, FREQ_HZ 322265625" *)
@@ -86,6 +89,9 @@ module cmac_control_ex
 
     (* X_INTERFACE_INFO = "xilinx.com:*:drp_ports:2.0 gt_trans_debug gt_txprecursor" *)
     output[19:0] gt_txprecursor,
+    
+    (* X_INTERFACE_INFO = "xilinx.com:*:drp_ports:2.0 gt_trans_debug gt_txdiffctrl" *)    
+    output[19:0] gt_txdiffctrl,
 
     (* X_INTERFACE_INFO = "xilinx.com:*:statistics_ports:2.0 stat_rx stat_rx_aligned" *)
     input      stat_rx_aligned,
@@ -126,6 +132,7 @@ assign sys_reset_out = ~sys_resetn_in;
 // Select the desired amount of transceiver signal pre-emphasis
 //=============================================================================
 assign gt_txprecursor = {4{tx_pre}};
+assign gt_txdiffctrl  = {4{TX_DIFF}};
 //=============================================================================
 
 //=============================================================================
