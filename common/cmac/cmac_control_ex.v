@@ -24,6 +24,8 @@
 // 08-Jun-24  DWW     7  Added "sys_reset_out", rsfec_enable, and tx_pre
 //
 // 15-Jun-24  DWW     8  Now controlling gt_txdiffctrl
+//
+// 16-Jun-24  DWW     9  Added programmable gt_txdiffctrl and gt_txpostcursor
 //===================================================================================================
 
 /*
@@ -44,13 +46,11 @@
 
     (4) Provides a reset/resetn signal that is synchronous to rx_clk
 
-    (5) Drives the tx_precursor setting for the transceivers
-    
-    (6) Drives the tx_diffctrl setting for the transceivers
+    (5) Drives tx_precursor, tx_postcursor, and tx_diffctrl setting for the transceivers
 
 */
   
-module cmac_control_ex # (parameter[4:0] TX_DIFF = 5'b11000)
+module cmac_control_ex 
 (
     (* X_INTERFACE_INFO      = "xilinx.com:signal:clock:1.0 rx_clk CLK"           *)
     (* X_INTERFACE_PARAMETER = "ASSOCIATED_RESET rx_reset_out:rx_resetn_out:reset_rx_datapath, FREQ_HZ 322265625" *)
@@ -63,8 +63,8 @@ module cmac_control_ex # (parameter[4:0] TX_DIFF = 5'b11000)
     // Determines whether RS-FEC is enabled or disabled
     input  rsfec_enable, 
 
-    // Pre-emphasis setting for GT signal shaping
-    input[4:0] tx_pre,
+    // Signal shaping for the transceivers
+    input[4:0] tx_pre, tx_post, tx_diff,
 
     (* X_INTERFACE_INFO = "xilinx.com:*:rs_fec_ports:2.0 rs_fec ctl_rx_rsfec_enable" *)
     output ctl_rx_rsfec_enable,
@@ -89,7 +89,10 @@ module cmac_control_ex # (parameter[4:0] TX_DIFF = 5'b11000)
 
     (* X_INTERFACE_INFO = "xilinx.com:*:drp_ports:2.0 gt_trans_debug gt_txprecursor" *)
     output[19:0] gt_txprecursor,
-    
+
+    (* X_INTERFACE_INFO = "xilinx.com:*:drp_ports:2.0 gt_trans_debug gt_txpostcursor" *)    
+    output[19:0] gt_txpostcursor,
+
     (* X_INTERFACE_INFO = "xilinx.com:*:drp_ports:2.0 gt_trans_debug gt_txdiffctrl" *)    
     output[19:0] gt_txdiffctrl,
 
@@ -131,8 +134,9 @@ assign sys_reset_out = ~sys_resetn_in;
 //=============================================================================
 // Select the desired amount of transceiver signal pre-emphasis
 //=============================================================================
-assign gt_txprecursor = {4{tx_pre}};
-assign gt_txdiffctrl  = {4{TX_DIFF}};
+assign gt_txprecursor  = {4{tx_pre }};
+assign gt_txpostcursor = {4{tx_post}};
+assign gt_txdiffctrl   = {4{tx_diff}};
 //=============================================================================
 
 //=============================================================================
