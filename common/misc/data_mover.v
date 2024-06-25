@@ -6,6 +6,8 @@
 //====================================================================================
 // 22-Mar-24  DWW     1  Initial creation
 // 18-Jun-24  DWW     2  Made much more generic
+// 25-Jun-25  DWW     3  Changed a "end begin" to the correct "end else begin". Has
+//                       no effect on runtime behavior
 //====================================================================================
 
 /*
@@ -177,7 +179,7 @@ always @(posedge clk) begin
         1:  if (SRC_AXI_ARREADY & SRC_AXI_ARVALID) begin
                 if (ar_count == BURSTS_PER_MOVE) begin
                     arsm_state      <= 0;
-                end begin
+                end else begin
                     SRC_AXI_ARADDR  <= SRC_AXI_ARADDR + burst_size;
                     ar_count        <= ar_count + 1; 
                 end
