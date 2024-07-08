@@ -5,6 +5,8 @@
 //   Date     Who   Ver  Changes
 //====================================================================================
 // 21-Mar-24  DWW     1  Initial creation
+// 08-Jul-24  DWW     2  Now driving S_AXI_RVALID low during reset
+//                       Tied low unused signals in the write-channels of S_AXI
 //====================================================================================
 
 
@@ -12,7 +14,7 @@
     This is an AXI slave-interface to a pair of SDP (Simple Dual Port) RAM
     blocks.
 
-    Reading from the S_AXI interface will return data that is the arithmetic-or 
+    Reading from the S_AXI interface will return data that is the bitwise-or 
     of the two blocks of RAM
 
     The S_AXI interface is read-only and does not support narrow reads or burst 
@@ -39,14 +41,14 @@ module abm_manager_if # (parameter DW = 512, DD = 16384)
     input[3:0]                              S_AXI_AWCACHE,
     input[3:0]                              S_AXI_AWQOS,
     input[2:0]                              S_AXI_AWPROT,
-    output reg                                              S_AXI_AWREADY,
+    output                                                  S_AXI_AWREADY,
 
     // "Write Data"                         -- Master --    -- Slave --
     input[DW-1:0]                           S_AXI_WDATA,
     input[DW/8-1:0]                         S_AXI_WSTRB,
     input                                   S_AXI_WVALID,
     input                                   S_AXI_WLAST,
-    output reg                                              S_AXI_WREADY,
+    output                                                  S_AXI_WREADY,
 
     // "Send Write Response"                -- Master --    -- Slave --
     output[1:0]                                             S_AXI_BRESP,
@@ -84,12 +86,18 @@ assign S_AXI_RLAST = (beat == burst_length);
 // The read-response is always "OKAY"
 assign S_AXI_RRESP = 0;
 
+// Tie off the unused signals for the "write" side of S_AXI
+assign S_AXI_AWREADY = 0;
+assign S_AXI_WREADY  = 0;
+assign S_AXI_BRESP   = 0;
+assign S_AXI_BVALID  = 0;
 
 always @(posedge clk) begin
     
     if (resetn == 0) begin
         fsm_state     <= 0;
         S_AXI_ARREADY <= 0;
+        S_AXI_RVALID  <= 0;
     end else case (fsm_state)
 
         // As we come out of reset, begin accepting read-requests

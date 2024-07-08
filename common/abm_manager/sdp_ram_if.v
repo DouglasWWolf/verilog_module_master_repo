@@ -5,6 +5,7 @@
 //   Date     Who   Ver  Changes
 //====================================================================================
 // 20-Mar-24  DWW     1  Initial creation
+// 08-Jul-24  DWW     2  Tied low unused signals on R and AR channels of S_AXI 
 //====================================================================================
 
 /*
@@ -101,6 +102,14 @@ sdp_ram # (.DW(DW), .DD(DD), .RAM_TYPE(RAM_TYPE)) u_sdp_ram
     .dob    (dob)    
 );
 //-----------------------------------------------------------------------------
+
+// Tie off unused signals from "R" and "AR" channels
+assign S_AXI_ARREADY = 0;
+assign S_AXI_RDATA   = 0;
+assign S_AXI_RVALID  = 0;
+assign S_AXI_RRESP   = 0;
+assign S_AXI_RLAST   = 0;
+
 
 // These are the handshakes for the AXI AW and W channels
 wire aw_handshake = S_AXI_AWREADY & S_AXI_AWVALID;
