@@ -90,8 +90,8 @@ module ldp_manager # (parameter DW=512, AW=64)
     output                                  M_AXI_BREADY,
 
     // "Specify read address"               -- Master --    -- Slave --
-    output reg [AW-1:0]                     M_AXI_ARADDR,
-    output reg                              M_AXI_ARVALID,
+    output     [AW-1:0]                     M_AXI_ARADDR,
+    output                                  M_AXI_ARVALID,
     output     [2:0]                        M_AXI_ARPROT,
     output                                  M_AXI_ARLOCK,
     output     [3:0]                        M_AXI_ARID,
@@ -138,13 +138,14 @@ reg [DW-1:0] metadata[0:1];
 
 // The state of the state machine that drives the W-channel of M_AXI
 reg[2:0]   wsm_state;
-localparam WSM_WAIT_FIRST_FD     = 0;
-localparam WSM_WAIT_REMAINING_FD = 1;
-localparam WSM_WRITE_MD00        = 2;
-localparam WSM_WRITE_MD01        = 3;
-localparam WSM_WRITE_MD10        = 4;
-localparam WSM_WRITE_MD11        = 5;
-localparam WSM_WRITE_FC          = 6;
+localparam WSM_RESET             = 0;
+localparam WSM_WAIT_FIRST_FD     = 1;
+localparam WSM_WAIT_REMAINING_FD = 2;
+localparam WSM_WRITE_MD00        = 3;
+localparam WSM_WRITE_MD01        = 4;
+localparam WSM_WRITE_MD10        = 5;
+localparam WSM_WRITE_MD11        = 6;
+localparam WSM_WRITE_FC          = 7;
 
 
 // The state of the state-machine that controls the AW-channel of M_AXI
@@ -171,8 +172,20 @@ wire first_cycle_of_frame = (resetn == 1) & (wsm_state == WSM_WAIT_FIRST_FD) & M
 // This determines when we will start issuing transactions in the AW-channel of M_AXI
 wire issue_aw_requests  = (resetn == 1) & (wsm_state == WSM_WAIT_FIRST_FD) & axis_fd_tvalid;
 
-// We're always ready for write-acknowledgements
-assign M_AXI_BREADY = 1;
+// We're ready for write-acknowledgements any time we're not in reset
+assign M_AXI_BREADY = (resetn == 1);
+
+// The AR and A channels of M_AXI are unused
+assign M_AXI_ARVALID = 0;
+assign M_AXI_ARADDR  = 0;
+assign M_AXI_ARPROT  = 0;
+assign M_AXI_ARLOCK  = 0;
+assign M_AXI_ARID    = 0;
+assign M_AXI_ARLEN   = 0;
+assign M_AXI_ARBURST = 0;
+assign M_AXI_ARCACHE = 0;
+assign M_AXI_ARQOS   = 0;
+assign M_AXI_RREADY  = 0;
 
 
 //==============================================================================
@@ -370,9 +383,16 @@ end
 // This controls the AW-channel of the M_AXI master interface
 //==============================================================================
 always @* begin
-   
-    case (awsm_state) 
 
+    if (resetn == 0) begin
+        awsm_fd_write = 0;
+        M_AXI_AWADDR  = 0;
+        M_AXI_AWLEN   = 0;
+        M_AXI_AWVALID = 0;
+
+    end else case (awsm_state) 
+
+        // Are we emitting the first write-request for frame-data?
         AWSM_EMIT_FIRST_FD_REQ:
             begin
                 awsm_fd_write = 1;
@@ -381,7 +401,7 @@ always @* begin
                 M_AXI_AWVALID = issue_aw_requests;
             end
 
-        // Are we emitting a write-request for frame-data?
+        // Are we emitting a write-request for subsequent frame-data?
         AWSM_EMIT_FD_WRITE_REQS:
             begin
                 awsm_fd_write = 1;
@@ -508,7 +528,8 @@ always @* begin
         M_AXI_WVALID   = 0;
 
     end else case (wsm_state)
-        
+
+
         // Are we writing the first cycle of data for this frame?
         WSM_WAIT_FIRST_FD:
             begin
