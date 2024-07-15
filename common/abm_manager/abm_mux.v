@@ -57,6 +57,7 @@ module abm_mux # (parameter DW=512, AW=64)
     input     [2:0]                         S0_AXI_ARPROT,
     input                                   S0_AXI_ARLOCK,
     input     [3:0]                         S0_AXI_ARID,
+    input     [2:0]                         S0_AXI_ARSIZE,
     input     [7:0]                         S0_AXI_ARLEN,
     input     [1:0]                         S0_AXI_ARBURST,
     input     [3:0]                         S0_AXI_ARCACHE,
@@ -106,6 +107,7 @@ module abm_mux # (parameter DW=512, AW=64)
     input     [2:0]                         S1_AXI_ARPROT,
     input                                   S1_AXI_ARLOCK,
     input     [3:0]                         S1_AXI_ARID,
+    input     [2:0]                         S1_AXI_ARSIZE,
     input     [7:0]                         S1_AXI_ARLEN,
     input     [1:0]                         S1_AXI_ARBURST,
     input     [3:0]                         S1_AXI_ARCACHE,
@@ -155,6 +157,7 @@ module abm_mux # (parameter DW=512, AW=64)
     output reg [2:0]                        M_AXI_ARPROT,
     output reg                              M_AXI_ARLOCK,
     output reg [3:0]                        M_AXI_ARID,
+    output reg [2:0]                        M_AXI_ARSIZE,
     output reg [7:0]                        M_AXI_ARLEN,
     output reg [1:0]                        M_AXI_ARBURST,
     output reg [3:0]                        M_AXI_ARCACHE,
@@ -277,6 +280,7 @@ always @* begin
         M_AXI_ARPROT  = S1_AXI_ARPROT;
         M_AXI_ARLOCK  = S1_AXI_ARLOCK;
         M_AXI_ARID    = S1_AXI_ARID;
+        M_AXI_ARSIZE  = S1_AXI_ARSIZE;
         M_AXI_ARLEN   = S1_AXI_ARLEN;
         M_AXI_ARBURST = S1_AXI_ARBURST;
         M_AXI_ARCACHE = S1_AXI_ARCACHE;
@@ -287,6 +291,7 @@ always @* begin
         M_AXI_ARPROT  = S0_AXI_ARPROT;
         M_AXI_ARLOCK  = S0_AXI_ARLOCK;
         M_AXI_ARID    = S0_AXI_ARID;
+        M_AXI_ARSIZE  = S0_AXI_ARSIZE;
         M_AXI_ARLEN   = S0_AXI_ARLEN;
         M_AXI_ARBURST = S0_AXI_ARBURST;
         M_AXI_ARCACHE = S0_AXI_ARCACHE;

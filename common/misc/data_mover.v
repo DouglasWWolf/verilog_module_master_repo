@@ -7,6 +7,8 @@
 // 22-Mar-24  DWW     1  Initial creation
 // 18-Jun-24  DWW     2  Made much more generic
 // 12-Jul-24  DWW     3  Now assigning unused signals to 0
+// 15-Jul-24  DWW     4  Added ARSIZE to the AXI interface definitions
+//                       Now assigning values to AxID, AxCACHE, AxPROT, and AxQOS
 //====================================================================================
 
 /*
@@ -58,6 +60,7 @@ module data_mover # (parameter DW = 512, parameter AW = 64)
     output     [2:0]                        SRC_AXI_ARPROT,
     output                                  SRC_AXI_ARLOCK,
     output     [3:0]                        SRC_AXI_ARID,
+    output     [2:0]                        SRC_AXI_ARSIZE,
     output     [7:0]                        SRC_AXI_ARLEN,
     output     [1:0]                        SRC_AXI_ARBURST,
     output     [3:0]                        SRC_AXI_ARCACHE,
@@ -106,6 +109,7 @@ module data_mover # (parameter DW = 512, parameter AW = 64)
     output[2:0]                             DST_AXI_ARPROT,
     output                                  DST_AXI_ARLOCK,
     output[3:0]                             DST_AXI_ARID,
+    output[2:0]                             DST_AXI_ARSIZE,
     output[7:0]                             DST_AXI_ARLEN,
     output[1:0]                             DST_AXI_ARBURST,
     output[3:0]                             DST_AXI_ARCACHE,
@@ -160,7 +164,13 @@ reg[31:0] writes_reqd, writes_ackd;
 //=============================================================================
 // This block sends read-requests to the SRC_AXI interace
 //=============================================================================
-assign SRC_AXI_ARBURST = 1;
+assign SRC_AXI_ARID    = 0;
+assign SRC_AXI_ARLOCK  = 0;
+assign SRC_AXI_ARQOS   = 0;
+assign SRC_AXI_ARSIZE  = $clog2(DW/8);
+assign SRC_AXI_ARCACHE = 2; /* Modifiable */
+assign SRC_AXI_ARPROT  = 2; /* Privileged */
+assign SRC_AXI_ARBURST = 1; /* Incr Burst */
 assign SRC_AXI_ARLEN   = CYCLES_PER_BURST - 1 ;
 assign SRC_AXI_ARVALID = (resetn == 1 && arsm_state == 1);
 //-----------------------------------------------------------------------------
@@ -193,7 +203,13 @@ end
 //=============================================================================
 // This block sends write-requests to the DST_AXI interace
 //=============================================================================
-assign DST_AXI_AWBURST = 1;
+assign DST_AXI_AWID    = 0;
+assign DST_AXI_AWLOCK  = 0;
+assign DST_AXI_AWQOS   = 0;
+assign DST_AXI_AWSIZE  = $clog2(DW/8);
+assign DST_AXI_AWCACHE = 2; /* Modifiable */
+assign DST_AXI_AWPROT  = 2; /* Privileged */
+assign DST_AXI_AWBURST = 1; /* Incr Burst */
 assign DST_AXI_AWLEN   = CYCLES_PER_BURST - 1 ;
 assign DST_AXI_AWSIZE  = $clog2(DW/8);
 assign DST_AXI_AWVALID = (resetn == 1 && awsm_state == 1);
@@ -328,6 +344,7 @@ assign DST_AXI_ARVALID = 0;
 assign DST_AXI_ARPROT  = 0;
 assign DST_AXI_ARLOCK  = 0;
 assign DST_AXI_ARID    = 0;
+assign DST_AXI_ARSIZE  = 0;
 assign DST_AXI_ARLEN   = 0;
 assign DST_AXI_ARBURST = 0;
 assign DST_AXI_ARCACHE = 0;

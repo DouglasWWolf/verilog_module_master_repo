@@ -7,6 +7,7 @@
 // 21-Mar-24  DWW     1  Initial creation
 // 08-Jul-24  DWW     2  Now driving S_AXI_RVALID low during reset
 //                       Tied low unused signals in the write-channels of S_AXI
+// 15-Jul-24  DWW     3  Added S_AXI_ARSIZE input port, just for good form
 //====================================================================================
 
 
@@ -61,6 +62,7 @@ module abm_manager_if # (parameter DW = 512, DD = 16384)
     input[2:0]                              S_AXI_ARPROT,
     input                                   S_AXI_ARLOCK,
     input[3:0]                              S_AXI_ARID,
+    input[2:0]                              S_AXI_ARSIZE,
     input[7:0]                              S_AXI_ARLEN,
     input[1:0]                              S_AXI_ARBURST,
     input[3:0]                              S_AXI_ARCACHE,

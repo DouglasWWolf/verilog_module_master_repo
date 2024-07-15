@@ -102,6 +102,7 @@
     output     [2:0]                        M_AXI_ARPROT,
     output                                  M_AXI_ARLOCK,
     output     [3:0]                        M_AXI_ARID,
+    output     [2:0]                        M_AXI_ARSIZE,
     output     [7:0]                        M_AXI_ARLEN,
     output     [1:0]                        M_AXI_ARBURST,
     output     [3:0]                        M_AXI_ARCACHE,
@@ -152,6 +153,7 @@
     input     [2:0]                         S_AXI_ARPROT,
     input                                   S_AXI_ARLOCK,
     input     [3:0]                         S_AXI_ARID,
+    input     [2:0]                         S_AXI_ARSIZE
     input     [7:0]                         S_AXI_ARLEN,
     input     [1:0]                         S_AXI_ARBURST,
     input     [3:0]                         S_AXI_ARCACHE,
