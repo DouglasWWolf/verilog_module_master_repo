@@ -67,6 +67,7 @@ module sdp_ram_if #
     input[2:0]                              S_AXI_ARPROT,
     input                                   S_AXI_ARLOCK,
     input[3:0]                              S_AXI_ARID,
+    input[2:0]                              S_AXI_ARSIZE,
     input[7:0]                              S_AXI_ARLEN,
     input[1:0]                              S_AXI_ARBURST,
     input[3:0]                              S_AXI_ARCACHE,

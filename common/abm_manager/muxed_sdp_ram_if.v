@@ -60,6 +60,7 @@ module muxed_sdp_ram_if # (parameter DW=512, AW=64, DD=16384, RAM_TYPE="ultra")
     input     [2:0]                         S0_AXI_ARPROT,
     input                                   S0_AXI_ARLOCK,
     input     [3:0]                         S0_AXI_ARID,
+    input     [2:0]                         S0_AXI_ARSIZE,
     input     [7:0]                         S0_AXI_ARLEN,
     input     [1:0]                         S0_AXI_ARBURST,
     input     [3:0]                         S0_AXI_ARCACHE,
@@ -109,6 +110,7 @@ module muxed_sdp_ram_if # (parameter DW=512, AW=64, DD=16384, RAM_TYPE="ultra")
     input     [2:0]                         S1_AXI_ARPROT,
     input                                   S1_AXI_ARLOCK,
     input     [3:0]                         S1_AXI_ARID,
+    input     [2:0]                         S1_AXI_ARSIZE,
     input     [7:0]                         S1_AXI_ARLEN,
     input     [1:0]                         S1_AXI_ARBURST,
     input     [3:0]                         S1_AXI_ARCACHE,
@@ -153,6 +155,7 @@ wire              m_axi_arvalid;
 wire [2:0]        m_axi_arprot;
 wire              m_axi_arlock;
 wire [3:0]        m_axi_arid;
+wire [2:0]        m_axi_arsize;
 wire [7:0]        m_axi_arlen;
 wire [1:0]        m_axi_arburst;
 wire [3:0]        m_axi_arcache;
@@ -180,6 +183,7 @@ abm_mux # (.DW(DW), .AW(AW)) i_abm_mux
     .S0_AXI_ARPROT  (S0_AXI_ARPROT ),
     .S0_AXI_ARLOCK  (S0_AXI_ARLOCK ),
     .S0_AXI_ARID    (S0_AXI_ARID   ),
+    .S0_AXI_ARSIZE  (S0_AXI_ARSIZE ),
     .S0_AXI_ARLEN   (S0_AXI_ARLEN  ),
     .S0_AXI_ARBURST (S0_AXI_ARBURST),
     .S0_AXI_ARCACHE (S0_AXI_ARCACHE),
@@ -215,6 +219,7 @@ abm_mux # (.DW(DW), .AW(AW)) i_abm_mux
     .S1_AXI_ARPROT  (S1_AXI_ARPROT ),
     .S1_AXI_ARLOCK  (S1_AXI_ARLOCK ),
     .S1_AXI_ARID    (S1_AXI_ARID   ),
+    .S1_AXI_ARSIZE  (S1_AXI_ARSIZE ),
     .S1_AXI_ARLEN   (S1_AXI_ARLEN  ),
     .S1_AXI_ARBURST (S1_AXI_ARBURST),
     .S1_AXI_ARCACHE (S1_AXI_ARCACHE),
@@ -251,6 +256,7 @@ abm_mux # (.DW(DW), .AW(AW)) i_abm_mux
     .M_AXI_ARPROT   (m_axi_arprot  ),
     .M_AXI_ARLOCK   (m_axi_arlock  ),
     .M_AXI_ARID     (m_axi_arid    ),
+    .M_AXI_ARSIZE   (m_axi_arsize  ),
     .M_AXI_ARLEN    (m_axi_arlen   ),
     .M_AXI_ARBURST  (m_axi_arburst ),
     .M_AXI_ARCACHE  (m_axi_arcache ),
@@ -300,6 +306,7 @@ sdp_ram_if # (.DW(DW), .DD(DD), .RAM_TYPE(RAM_TYPE)) i_sdp_ram_if
     .S_AXI_ARPROT  (m_axi_arprot ),
     .S_AXI_ARLOCK  (m_axi_arlock ),
     .S_AXI_ARID    (m_axi_arid   ),
+    .S_AXI_ARSIZE  (m_axi_arsize ),
     .S_AXI_ARLEN   (m_axi_arlen  ),
     .S_AXI_ARBURST (m_axi_arburst),
     .S_AXI_ARCACHE (m_axi_arcache),
