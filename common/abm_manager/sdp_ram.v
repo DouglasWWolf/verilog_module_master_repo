@@ -5,6 +5,7 @@
 //   Date     Who   Ver  Changess
 //====================================================================================
 // 20-Mar-24  DWW     1  Initial creation
+// 17-Jul-24  DWW     2  Re-arranged code to avoid reuse of a single scope name
 //====================================================================================
 
 /*
@@ -39,26 +40,52 @@ module sdp_ram #
     output reg [DW-1:0] dob
 );
 
-
-if (RAM_TYPE == "distributed") begin : ram_scope
+if (RAM_TYPE == "distributed") begin : distributed 
     (* ram_style = "distributed" *) reg [DW-1:0] RAM [DD-1:0];
-end : ram_scope
+end : distributed
 
-if (RAM_TYPE == "block") begin : ram_scope
+if (RAM_TYPE == "block") begin : block
     (* ram_style = "block" *) reg [DW-1:0] RAM [DD-1:0];
-end : ram_scope
+end : block
 
-if (RAM_TYPE == "ultra") begin : ram_scope
+if (RAM_TYPE == "ultra") begin : ultra
     (* ram_style = "ultra" *) reg [DW-1:0] RAM [DD-1:0];
-end : ram_scope
+end : ultra
 
-always @(posedge clk) begin
-    if (wea) ram_scope.RAM[addra] <= dia;
+
+if (RAM_TYPE == "distributed") begin
+    always @(posedge clk) begin
+        if (wea) distributed.RAM[addra] <= dia;
+    end
+
+    always @(posedge clk) begin
+        dob <= distributed.RAM[addrb];
+    end
 end
 
-always @(posedge clk) begin
-    dob <= ram_scope.RAM[addrb];
+
+if (RAM_TYPE == "block") begin
+    always @(posedge clk) begin
+        if (wea) block.RAM[addra] <= dia;
+    end
+
+    always @(posedge clk) begin
+        dob <= block.RAM[addrb];
+    end
 end
+
+
+if (RAM_TYPE == "ultra") begin
+    always @(posedge clk) begin
+        if (wea) ultra.RAM[addra] <= dia;
+    end
+
+    always @(posedge clk) begin
+        dob <= ultra.RAM[addrb];
+    end
+end
+
+
 
 
 endmodule
