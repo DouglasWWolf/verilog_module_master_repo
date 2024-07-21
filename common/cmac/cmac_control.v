@@ -22,6 +22,8 @@
 //                       Now driving the tx_precursor setting on the transceivers
 //
 // 16-Jun-24  DWW     7  Now driving the tx_diffctrl setting on the transceivers
+//
+// 20-Jul-24  DWW     9  Added port sys_reset_out and parameter USE_SYS_RESET_OUT
 //===================================================================================================
 
 /*
@@ -43,15 +45,17 @@
     (4) Provides a reset/resetn signal that is synchronous to rx_clk
 
     (5) Drives the tx_precursor and tx_diffctrl setting for the transceivers
-    
 
+    (6) Optionally drives the sys_reset pin of the CMAC
+    
 */
   
 module cmac_control #
 (
-    parameter      RSFEC        = 1,
-    parameter[4:0] TX_PRECURSOR = 5'b00000,
-    parameter[4:0] TX_DIFF      = 5'b11000
+    parameter      RSFEC             = 1,
+    parameter[4:0] TX_PRECURSOR      = 5'b00000,
+    parameter[4:0] TX_DIFF           = 5'b11000,
+    parameter      USE_SYS_RESET_OUT = 0
 )
 (
     (* X_INTERFACE_INFO      = "xilinx.com:signal:clock:1.0 rx_clk CLK"           *)
@@ -59,7 +63,7 @@ module cmac_control #
     input rx_clk,
 
     (* X_INTERFACE_INFO      = "xilinx.com:signal:reset:1.0 sys_resetn_in RST" *)
-    (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_LOW "                         *)
+    (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_LOW "                          *)
     input sys_resetn_in,
 
     (* X_INTERFACE_INFO = "xilinx.com:*:rs_fec_ports:2.0 rs_fec ctl_rx_rsfec_enable" *)
@@ -108,7 +112,10 @@ module cmac_control #
     output     reset_rx_datapath,
 
     // stat_rx_aligned, synchronized to rx_clk
-    output     sync_rx_aligned
+    output     sync_rx_aligned,
+
+    // Drives the CMAC "sys_reset" input
+    output sys_reset_out
 
 );
 
@@ -156,6 +163,13 @@ assign reset_rx_datapath = (reset_timer != 0);
 
 // "rx_reset_out" is always the inverse of "rx_resetn_out"
 assign rx_reset_out = ~rx_resetn_out;
+
+// Determine whether sys_reset_out will ever be asserted
+if (USE_SYS_RESET_OUT) begin
+    assign sys_reset_out = ~sys_resetn_in;
+end else begin
+    assign sys_reset_out = 0;
+end
 
 //=============================================================================
 // Synchronize "stat_rx_aligned" into "sync_rx_aligned"
