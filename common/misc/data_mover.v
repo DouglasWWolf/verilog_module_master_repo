@@ -9,6 +9,7 @@
 // 12-Jul-24  DWW     3  Now assigning unused signals to 0
 // 15-Jul-24  DWW     4  Added ARSIZE to the AXI interface definitions
 //                       Now assigning values to AxID, AxCACHE, AxPROT, and AxQOS
+// 17-Jul-24  DWW     5  Now de-asserting DST_AXI_WVALID & SRC_AXI_WREADY in reset
 //====================================================================================
 
 /*
@@ -248,8 +249,8 @@ end
 assign DST_AXI_WDATA  = SRC_AXI_RDATA;
 assign DST_AXI_WSTRB  = -1;
 assign DST_AXI_WLAST  = SRC_AXI_RLAST;
-assign DST_AXI_WVALID = SRC_AXI_RVALID & (wsm_state == 1);
-assign SRC_AXI_RREADY = DST_AXI_WREADY & (wsm_state == 1);
+assign DST_AXI_WVALID = SRC_AXI_RVALID & (wsm_state == 1) & (resetn == 1);
+assign SRC_AXI_RREADY = DST_AXI_WREADY & (wsm_state == 1) & (resetn == 1);
 //============================================================================
 
 
