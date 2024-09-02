@@ -12,12 +12,12 @@
 
 /*
 
-   This module is intended to monitor the "axis_tx" input of a CMAC and
+   This module is intended to monitor the "axis_rx" output of a CMAC and
    count packets by packet size. 
 
 */
 
-module ns_txpkt_counter # (parameter DW=512)
+module ns_rxpkt_counter # (parameter DW=512)
 (
     input clk,
     
@@ -29,32 +29,29 @@ module ns_txpkt_counter # (parameter DW=512)
     input[DW-1:0]   monitor_tdata,
     input[DW/8-1:0] monitor_tkeep,
     input           monitor_tlast,
+    input           monitor_tuser,
     input           monitor_tvalid,
     input           monitor_tready,
 
-    // Number of frame-data packets
-    output reg[31:0] fd_packets,
+    // Number 4096-byte payload + 64-byte header packets
+    output reg[31:0] len4160_packets,
     
-    // Number of meta-data packet
-    output reg[31:0] md_packets,
-
-    // Number of frame-counter packets
-    output reg[31:0] fc_packets,
+    // Number of corrupt packets
+    output reg[31:0] bad_packets,
     
     // Number of unrecognized packets
     output reg[31:0] other_packets
 );
 
 // The lengths of the packets we care about
-localparam FRAME_DATA_LEN = 4096 + 64;
-localparam META_DATA_LEN  =  128 + 64;
-localparam FRAME_CTR_LEN  =    4 + 64;
+localparam ABM_PACKET_LEN = 4096 + 64;
 
 // This is the "aresetn" signal after being synchronized to "clk"
 wire resetn;
 
 // Part of the input AXI stream is registered
 reg           reg_tlast;
+reg           reg_tuser;
 reg           reg_tvalid;
 reg           reg_tready;
 
@@ -82,6 +79,7 @@ always @(posedge clk) begin
 
     if (resetn == 0) begin
         reg_tlast       <= 0;
+        reg_tuser       <= 0;
         reg_tvalid      <= 0;
         reg_tready      <= 0;
         reg_tkeep_count <= 0;
@@ -89,6 +87,7 @@ always @(posedge clk) begin
 
     else begin
         reg_tlast       <= monitor_tlast;
+        reg_tuser       <= monitor_tuser;
         reg_tvalid      <= monitor_tvalid;
         reg_tready      <= monitor_tready;
         reg_tkeep_count <= one_bits(monitor_tkeep);
@@ -131,11 +130,10 @@ always @(posedge clk) begin
 
     // If reset is asserted...
     if (resetn == 0) begin
-        fd_packets     <= 0;
-        md_packets     <= 0;
-        fc_packets     <= 0;
-        other_packets  <= 0;
-        partial_length <= 0;
+        len4160_packets <= 0;
+        bad_packets     <= 0;
+        other_packets   <= 0;
+        partial_length  <= 0;
     end
 
     // Otherwise: is this a data handshake?
@@ -145,14 +143,11 @@ always @(posedge clk) begin
         if (reg_tlast) begin
             
             // Increment the appropriate counter
-            if (packet_length == FRAME_DATA_LEN)
-                fd_packets <= fd_packets + 1;
-            
-            else if (packet_length == META_DATA_LEN)
-                md_packets <= md_packets + 1;
-            
-            else if (packet_length == FRAME_CTR_LEN)
-                fc_packets <= fc_packets + 1;
+            if (reg_tuser)
+                bad_packets <= bad_packets + 1;
+
+            else if (packet_length == ABM_PACKET_LEN)
+                len4160_packets <= len4160_packets + 1;
             
             else
                 other_packets <= other_packets + 1;
