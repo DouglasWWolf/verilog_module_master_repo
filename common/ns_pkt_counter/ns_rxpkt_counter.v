@@ -8,6 +8,8 @@
 //
 // 01-Sep-24  DWW     2  Registered the "monitor" input stream to ease
 //                       timing-closure.
+//
+// 17-Oct-24  DWW     3  Changed the packet counters from 32-bits to 64-bits
 //=============================================================================
 
 /*
@@ -34,13 +36,13 @@ module ns_rxpkt_counter # (parameter DW=512)
     input           monitor_tready,
 
     // Number 4096-byte payload + 64-byte header packets
-    output reg[31:0] len4160_packets,
+    output reg[63:0] len4160_packets,
     
     // Number of corrupt packets
-    output reg[31:0] bad_packets,
+    output reg[63:0] bad_packets,
     
     // Number of unrecognized packets
-    output reg[31:0] other_packets
+    output reg[63:0] other_packets
 );
 
 // The lengths of the packets we care about

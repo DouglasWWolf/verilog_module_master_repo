@@ -8,6 +8,8 @@
 //
 // 01-Sep-24  DWW     2  Registered the "monitor" input stream to ease
 //                       timing-closure.
+//
+// 17-Oct-24  DWW     3  Changed the packet counters from 32-bits to 64-bits
 //=============================================================================
 
 /*
@@ -33,16 +35,16 @@ module ns_txpkt_counter # (parameter DW=512)
     input           monitor_tready,
 
     // Number of frame-data packets
-    output reg[31:0] fd_packets,
+    output reg[63:0] fd_packets,
     
     // Number of meta-data packet
-    output reg[31:0] md_packets,
+    output reg[63:0] md_packets,
 
     // Number of frame-counter packets
-    output reg[31:0] fc_packets,
+    output reg[63:0] fc_packets,
     
     // Number of unrecognized packets
-    output reg[31:0] other_packets
+    output reg[63:0] other_packets
 );
 
 // The lengths of the packets we care about

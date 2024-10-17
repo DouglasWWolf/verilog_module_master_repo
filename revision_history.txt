@@ -11,5 +11,7 @@
 
  01-Sep-2024  1.4.0  DWW  Added module "ns_rxpkt_counter.v".
                           Registered inputs of "ns_txpkt_counter.v" to ease timing
+
+ 17-Oct-2024  1.5.0  DWW  Changed size of counters in ns_*x_pkt_counter from 32 to 64 bits.
 ================================================================================================
 
