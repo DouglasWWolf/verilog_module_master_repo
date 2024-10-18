@@ -15,5 +15,8 @@
  17-Oct-2024  1.5.0  DWW  Changed size of counters in ns_*x_pkt_counter from 32 to 64 bits.
 
  17-Oct-2024  1.6.0  DWW  Added module "cmac_bp_monitor.v"
+
+ 18-Oct-2024  1.6.1  DWW  Minor change to cmac_bp_monitor.v to initialize fsm_state when
+                          resetn is asserted
 ================================================================================================
 

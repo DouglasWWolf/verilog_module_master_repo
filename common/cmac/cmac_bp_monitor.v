@@ -5,6 +5,7 @@
 //   Date     Who   Ver  Changes
 //=============================================================================
 // 17-Oct-24  DWW     1  Initial creation
+// 18-Oct-24  DWW     2  Now initializing fsm_state when resetn is asserted
 //=============================================================================
  
 /*
@@ -88,6 +89,7 @@ always @(posedge clk) begin
     fifo_write <= 0;
 
     if (resetn == 0) begin 
+        fsm_state       <= 0;
         max_bp          <= 0;
         current_bp      <= 0;
         current_bp_rxad <= 0;
