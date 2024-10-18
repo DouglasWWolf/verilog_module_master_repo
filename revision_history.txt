@@ -13,5 +13,7 @@
                           Registered inputs of "ns_txpkt_counter.v" to ease timing
 
  17-Oct-2024  1.5.0  DWW  Changed size of counters in ns_*x_pkt_counter from 32 to 64 bits.
+
+ 17-Oct-2024  1.6.0  DWW  Added module "cmac_bp_monitor.v"
 ================================================================================================
 
