@@ -18,5 +18,7 @@
 
  18-Oct-2024  1.6.1  DWW  Minor change to cmac_bp_monitor.v to initialize fsm_state when
                           resetn is asserted
+
+ 28-Oct-2024  1.7.0  DWW  Added modules sensor_inject.v and sensor_inject_ctl.v
 ================================================================================================
 
