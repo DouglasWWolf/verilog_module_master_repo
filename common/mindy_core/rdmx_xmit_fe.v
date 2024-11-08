@@ -1,21 +1,47 @@
+//====================================================================================
+//                        ------->  Revision History  <------
+//====================================================================================
+//
+//   Date     Who   Ver  Changes
+//====================================================================================
+// 29-Feb-24  DWW     1  Initial
+//
+// 05-Nov-24  DWW     2  Added support for 32-bits of "user" data in AWUSER
+//                       Removed obsolete signal "addr_fifo_debug"
+//====================================================================================
+
+/*
+
+   This module stuffs incoming AXI bursts into three outgoing streams.
+
+   Stream AXIS_PLEN contains the packet lengths, one per packet.
+   Stream AXIS_ADDR contains the user data and target address, one per packet.
+   Stream AXIS_DATA contains the data that comprises the packet.
+
+*/
+
+
 module rdmx_xmit_fe # 
 (
     // This width of the incoming and outgoing data bus in bits
-    parameter DATA_WBITS = 512,
+    parameter DW = 512,
 
     // Width of an AXI address in bits
-    parameter ADDR_WBITS = 64
+    parameter AW = 64,
+
+    // The width of the additional user-data
+    parameter UW = 32
 
 ) 
 (
     input clk, resetn,
 
-    output addr_fifo_debug,
-    
+   
     //=================  This is the main AXI4-slave interface  ================
     
     // "Specify write address"              -- Master --    -- Slave --
-    input[ADDR_WBITS-1:0]                   S_AXI_AWADDR,
+    input[AW-1:0]                           S_AXI_AWADDR,
+    input[UW-1:0]                           S_AXI_AWUSER,
     input                                   S_AXI_AWVALID,
     input[3:0]                              S_AXI_AWID,
     input[7:0]                              S_AXI_AWLEN,
@@ -28,8 +54,8 @@ module rdmx_xmit_fe #
     output                                                  S_AXI_AWREADY,
 
     // "Write Data"                         -- Master --    -- Slave --
-    input[DATA_WBITS-1:0]                   S_AXI_WDATA,
-    input[DATA_WBITS/8-1:0]                 S_AXI_WSTRB,
+    input[DW-1:0]                           S_AXI_WDATA,
+    input[DW/8-1:0]                         S_AXI_WSTRB,
     input                                   S_AXI_WVALID,
     input                                   S_AXI_WLAST,
     output                                                  S_AXI_WREADY,
@@ -40,7 +66,7 @@ module rdmx_xmit_fe #
     input                                   S_AXI_BREADY,
 
     // "Specify read address"               -- Master --    -- Slave --
-    input[ADDR_WBITS-1:0]                   S_AXI_ARADDR,
+    input[AW-1:0]                           S_AXI_ARADDR,
     input                                   S_AXI_ARVALID,
     input[2:0]                              S_AXI_ARPROT,
     input                                   S_AXI_ARLOCK,
@@ -52,7 +78,7 @@ module rdmx_xmit_fe #
     output                                                  S_AXI_ARREADY,
 
     // "Read data back to master"           -- Master --    -- Slave --
-    output[DATA_WBITS-1:0]                                  S_AXI_RDATA,
+    output[DW-1:0]                                          S_AXI_RDATA,
     output                                                  S_AXI_RVALID,
     output[1:0]                                             S_AXI_RRESP,
     output                                                  S_AXI_RLAST,
@@ -61,7 +87,7 @@ module rdmx_xmit_fe #
 
 
     //==========================================================================
-    //                  Packet-length output stream
+    //                  Packet-length/user-data output stream
     //==========================================================================
     output [15:0]           AXIS_PLEN_TDATA,
     output                  AXIS_PLEN_TVALID,
@@ -71,19 +97,19 @@ module rdmx_xmit_fe #
     //==========================================================================
     //                  Target address output stream
     //==========================================================================
-    output [ADDR_WBITS-1:0] AXIS_ADDR_TDATA,
-    output                  AXIS_ADDR_TVALID,
-    input                   AXIS_ADDR_TREADY,
+    output [(UW + AW)-1:0] AXIS_ADDR_TDATA,
+    output                 AXIS_ADDR_TVALID,
+    input                  AXIS_ADDR_TREADY,
     //==========================================================================
 
 
     //==========================================================================
     //                    Packet-data output stream
     //==========================================================================
-    output [DATA_WBITS-1:0] AXIS_DATA_TDATA,
-    output                  AXIS_DATA_TLAST,
-    output                  AXIS_DATA_TVALID,
-    input                   AXIS_DATA_TREADY
+    output [DW-1:0] AXIS_DATA_TDATA,
+    output          AXIS_DATA_TLAST,
+    output          AXIS_DATA_TVALID,
+    input           AXIS_DATA_TREADY
     //==========================================================================
 );
 
@@ -98,7 +124,7 @@ integer n;
 always @*
 begin
     data_byte_count = 0;  
-    for (n=0;n<(DATA_WBITS/8);n=n+1) begin   
+    for (n=0;n<(DW/8);n=n+1) begin   
         data_byte_count = data_byte_count + S_AXI_WSTRB[n];
     end
 end
@@ -124,18 +150,10 @@ end
 //=============================================================================
 
 
-//=============================================================================
-// While debugging, it is occasionally useful to know if the input stream
-// is attempting to write to the "address" FIFO before that FIFO is ready
-// to receive data.   This is NOT an error because we only allow the 
-// transaction to complete when both the address and data FIFOs are ready
-// to receive
-assign addr_fifo_debug = S_AXI_AWVALID & (AXIS_ADDR_TREADY == 0);
-//=============================================================================
 
 // Output stream "target address" is driven directly from the AW-channel
 // We only accept data when both the data and address FIFOs are ready to receive
-assign AXIS_ADDR_TDATA  = S_AXI_AWADDR;
+assign AXIS_ADDR_TDATA  = {S_AXI_AWUSER, S_AXI_AWADDR};
 assign AXIS_ADDR_TVALID = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & S_AXI_AWVALID;
 assign S_AXI_AWREADY    = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & (resetn == 1);
 

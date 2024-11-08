@@ -14,6 +14,9 @@
 //                       attempt to write to the address FIFO before it was ready to
 //                       receive data.   Added "addr_fifo_debug" for future 
 //                       experiments
+//
+// 05-Nov-24  DWW  1004  Removed obsolete signal "addr_fifo_debug"
+//                       Now stamping frame-number into the packet header
 //====================================================================================
 
 /*
@@ -42,10 +45,14 @@
 module rdmx_xmit #
 (
     // This width of the incoming and outgoing data bus in bits
-    parameter DATA_WBITS = 512,
+    parameter DW = 512,
 
     // Width of an AXI address in bits
-    parameter ADDR_WBITS = 64,
+    parameter AW = 64,
+
+    // The AWUSER field is used to keep track of the frame number
+    parameter UW = 32,
+
     // This can be either "common_clock" or "independent clock".   Use
     // "independent clock" if the two clock inputs are not being fed 
     // from the same clock source!
@@ -99,7 +106,8 @@ module rdmx_xmit #
    //=================  This is the main AXI4-slave interface  ================
     
     // "Specify write address"              -- Master --    -- Slave --
-    input[ADDR_WBITS-1:0]                   S_AXI_AWADDR,
+    input[AW-1:0]                           S_AXI_AWADDR,
+    input[UW-1:0]                           S_AXI_AWUSER,
     input                                   S_AXI_AWVALID,
     input[3:0]                              S_AXI_AWID,
     input[7:0]                              S_AXI_AWLEN,
@@ -112,8 +120,8 @@ module rdmx_xmit #
     output                                                  S_AXI_AWREADY,
 
     // "Write Data"                         -- Master --    -- Slave --
-    input[DATA_WBITS-1:0]                   S_AXI_WDATA,
-    input[DATA_WBITS/8-1:0]                 S_AXI_WSTRB,
+    input[DW-1:0]                           S_AXI_WDATA,
+    input[DW/8-1:0]                         S_AXI_WSTRB,
     input                                   S_AXI_WVALID,
     input                                   S_AXI_WLAST,
     output                                                  S_AXI_WREADY,
@@ -124,7 +132,7 @@ module rdmx_xmit #
     input                                   S_AXI_BREADY,
 
     // "Specify read address"               -- Master --    -- Slave --
-    input[ADDR_WBITS-1:0]                   S_AXI_ARADDR,
+    input[AW-1:0]                           S_AXI_ARADDR,
     input                                   S_AXI_ARVALID,
     input[2:0]                              S_AXI_ARPROT,
     input                                   S_AXI_ARLOCK,
@@ -136,7 +144,7 @@ module rdmx_xmit #
     output                                                  S_AXI_ARREADY,
 
     // "Read data back to master"           -- Master --    -- Slave --
-    output[DATA_WBITS-1:0]                                  S_AXI_RDATA,
+    output[DW-1:0]                                          S_AXI_RDATA,
     output                                                  S_AXI_RVALID,
     output[1:0]                                             S_AXI_RRESP,
     output                                                  S_AXI_RLAST,
@@ -144,23 +152,18 @@ module rdmx_xmit #
     //==========================================================================
 
 
-
     //==========================================================================
     //     Outgoing UDP/RDMX packet, synchronous to dst_clk
     //==========================================================================
-    output [DATA_WBITS-1:0]   AXIS_TX_TDATA,
-    output [DATA_WBITS/8-1:0] AXIS_TX_TKEEP,
-    output                    AXIS_TX_TLAST,
-    output                    AXIS_TX_TVALID,
-    input                     AXIS_TX_TREADY,
+    output [DW-1:0]   AXIS_TX_TDATA,
+    output [DW/8-1:0] AXIS_TX_TKEEP,
+    output            AXIS_TX_TLAST,
+    output            AXIS_TX_TVALID,
+    input             AXIS_TX_TREADY,
     //==========================================================================
 
     // This is high whenever AXIS_DATA is trying to write to a full FIFO
-    output packet_data_fifo_full,
-
-    // This is used for debugging issues with the channel 0 address FIFO.   It is safe 
-    // to ignore this signal or leave it unconnected.
-    output addr_fifo_debug
+    output packet_data_fifo_full
 
 );
 
@@ -169,21 +172,22 @@ wire [15:0]           AXIS_PLEN_TDATA;
 wire                  AXIS_PLEN_TVALID;
 wire                  AXIS_PLEN_TREADY;
 
-// Wires to connect the target-address stream
-wire [ADDR_WBITS-1:0] AXIS_ADDR_TDATA;
+// Wires to connect the user-data/target-address stream
+wire [(UW+AW)-1:0]    AXIS_ADDR_TDATA;
 wire                  AXIS_ADDR_TVALID;
 wire                  AXIS_ADDR_TREADY;
 
 // Wires to connect the data stream
-wire [DATA_WBITS-1:0] AXIS_DATA_TDATA;
+wire [DW-1:0]         AXIS_DATA_TDATA;
 wire                  AXIS_DATA_TLAST;
 wire                  AXIS_DATA_TVALID;
 wire                  AXIS_DATA_TREADY;
 
 rdmx_xmit_fe #
 (
-    .DATA_WBITS(DATA_WBITS),
-    .ADDR_WBITS(ADDR_WBITS)
+    .DW(DW),
+    .AW(AW),
+    .UW(UW)
 )
 front_end
 (
@@ -191,6 +195,7 @@ front_end
     .resetn (src_resetn),
     
     .S_AXI_AWADDR   (S_AXI_AWADDR ),                  
+    .S_AXI_AWUSER   (S_AXI_AWUSER ),
     .S_AXI_AWVALID  (S_AXI_AWVALID),   
     .S_AXI_AWID     (S_AXI_AWID   ),
     .S_AXI_AWLEN    (S_AXI_AWLEN  ),   
@@ -236,30 +241,29 @@ front_end
     .AXIS_DATA_TDATA    (AXIS_DATA_TDATA ),
     .AXIS_DATA_TLAST    (AXIS_DATA_TLAST ),
     .AXIS_DATA_TVALID   (AXIS_DATA_TVALID),
-    .AXIS_DATA_TREADY   (AXIS_DATA_TREADY),
-
-    .addr_fifo_debug    (addr_fifo_debug)
+    .AXIS_DATA_TREADY   (AXIS_DATA_TREADY)
 );
 
 
 rdmx_xmit_be #
 (
-    .DATA_WBITS          (DATA_WBITS        ),
-    .ADDR_WBITS          (ADDR_WBITS        ),
-    .FIFO_CLOCK_MODE     (FIFO_CLOCK_MODE   ),
-    .SRC_MAC             (SRC_MAC           ),
-    .SRC_IP0             (SRC_IP0           ),
-    .SRC_IP1             (SRC_IP1           ),
-    .SRC_IP2             (SRC_IP2           ),
-    .SRC_IP3             (SRC_IP3           ),
-    .DST_IP0             (DST_IP0           ),
-    .DST_IP1             (DST_IP1           ),
-    .DST_IP2             (DST_IP2           ),
-    .DST_IP3             (DST_IP3           ),
-    .SOURCE_PORT         (SOURCE_PORT       ),
-    .REMOTE_SERVER_PORT  (REMOTE_SERVER_PORT),
-    .MAX_PACKET_COUNT    (MAX_PACKET_COUNT  ),
-    .DATA_FIFO_DEPTH     (DATA_FIFO_DEPTH   )
+    .DW                 (DW                ),
+    .AW                 (AW                ),
+    .UW                 (UW                ),
+    .FIFO_CLOCK_MODE    (FIFO_CLOCK_MODE   ),
+    .SRC_MAC            (SRC_MAC           ),
+    .SRC_IP0            (SRC_IP0           ),
+    .SRC_IP1            (SRC_IP1           ),
+    .SRC_IP2            (SRC_IP2           ),
+    .SRC_IP3            (SRC_IP3           ),
+    .DST_IP0            (DST_IP0           ),
+    .DST_IP1            (DST_IP1           ),
+    .DST_IP2            (DST_IP2           ),
+    .DST_IP3            (DST_IP3           ),
+    .SOURCE_PORT        (SOURCE_PORT       ),
+    .REMOTE_SERVER_PORT (REMOTE_SERVER_PORT),
+    .MAX_PACKET_COUNT   (MAX_PACKET_COUNT  ),
+    .DATA_FIFO_DEPTH    (DATA_FIFO_DEPTH   )
 )
 back_end
 (

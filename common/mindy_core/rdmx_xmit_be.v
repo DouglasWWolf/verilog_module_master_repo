@@ -8,6 +8,8 @@
 // 25-Jul-23  DWW  1000  Initial creation
 //
 // 12-Jan-24  DWW  1001  Changed name to RDMX
+//
+// 05-Nov-24  DWW  1002  Added "user-field" to the RDMX header
 //====================================================================================
 /*
 
@@ -49,10 +51,13 @@ module rdmx_xmit_be #
     parameter FIFO_CLOCK_MODE = "independent_clock",
 
     // This is the width of the incoming and outgoing data bus in bits
-    parameter DATA_WBITS = 512,
+    parameter DW = 512,
 
     // Width of an AXI address in bits
-    parameter ADDR_WBITS = 64,
+    parameter AW = 64,
+
+    // Width of the "User field" in the RDMX header, in bits
+    parameter UW = 32,
 
     // Last octet of the source MAC address
     parameter[ 7:0] SRC_MAC = 2,    
@@ -103,38 +108,38 @@ module rdmx_xmit_be #
     //==========================================================================
     //             Packet-length input stream, synchronous to src_clk
     //==========================================================================
-    input  [15:0]           AXIS_PLEN_TDATA,
-    input                   AXIS_PLEN_TVALID,
-    output                  AXIS_PLEN_TREADY,
+    input  [15:0] AXIS_PLEN_TDATA,
+    input         AXIS_PLEN_TVALID,
+    output        AXIS_PLEN_TREADY,
     //==========================================================================
 
     //==========================================================================
     //           Target address input stream, synchronous to src_clk
     //==========================================================================
-    input  [ADDR_WBITS-1:0] AXIS_ADDR_TDATA,
-    input                   AXIS_ADDR_TVALID,
-    output                  AXIS_ADDR_TREADY,
+    input  [(UW+AW)-1:0] AXIS_ADDR_TDATA,
+    input                AXIS_ADDR_TVALID,
+    output               AXIS_ADDR_TREADY,
     //==========================================================================
 
 
     //==========================================================================
     //              Packet-data input stream, synchronous to src_clk
     //==========================================================================
-    input  [DATA_WBITS-1:0] AXIS_DATA_TDATA,
-    input                   AXIS_DATA_TLAST,
-    input                   AXIS_DATA_TVALID,
-    output                  AXIS_DATA_TREADY,
+    input  [DW-1:0] AXIS_DATA_TDATA,
+    input           AXIS_DATA_TLAST,
+    input           AXIS_DATA_TVALID,
+    output          AXIS_DATA_TREADY,
     //==========================================================================
 
 
     //==========================================================================
     //     Outgoing UDP/RDMX packet, synchronous to dst_clk
     //==========================================================================
-    output [DATA_WBITS-1:0]   AXIS_TX_TDATA,
-    output [DATA_WBITS/8-1:0] AXIS_TX_TKEEP,
-    output                    AXIS_TX_TLAST,
-    output                    AXIS_TX_TVALID,
-    input                     AXIS_TX_TREADY,
+    output [DW-1:0]   AXIS_TX_TDATA,
+    output [DW-1:0]   AXIS_TX_TKEEP,
+    output            AXIS_TX_TLAST,
+    output            AXIS_TX_TVALID,
+    input             AXIS_TX_TREADY,
     //==========================================================================
 
     // This is high whenever AXIS_DATA is trying to write to a full FIFO
@@ -143,7 +148,7 @@ module rdmx_xmit_be #
 
 // anding a packet length with this mask will give the the remainder
 // of "payload_length / width-of-the-data-bus-in-bytes"
-localparam REMAINDER_MASK = (1 << $clog2(DATA_WBITS/8)) - 1;
+localparam REMAINDER_MASK = (1 << $clog2(DW/8)) - 1;
 
 //=============================================================================
 // This synchronizes src_resetn to dst_clk, resulting in dst_resetn
@@ -162,13 +167,13 @@ reset_synchronizer
     .dest_clk (dst_clk   )   
 );
 //=============================================================================
-
+ 
 
 //==================  The output of the packet-data FIFO  ==================
-wire[DATA_WBITS-1:0]   fpdout_tdata;
-wire                   fpdout_tvalid;
-wire                   fpdout_tlast;
-wire                   fpdout_tready;
+wire[DW-1:0] fpdout_tdata;
+wire         fpdout_tvalid;
+wire         fpdout_tlast;
+wire         fpdout_tready;
 //==========================================================================
 
 
@@ -185,10 +190,10 @@ wire[15:0] payload_length = (fplout_tvalid & fplout_tready) ? fplout_tdata : fpl
 
 
 //============  This is the output of the target-address FIFO  =============
-reg [ADDR_WBITS-1:0] ftaout_tdata_latched;
-wire[ADDR_WBITS-1:0] ftaout_tdata;
-wire                 ftaout_tvalid;
-reg                  ftaout_tready;
+reg [(UW+AW)-1:0] ftaout_tdata_latched;
+wire[(UW+AW)-1:0] ftaout_tdata;
+wire              ftaout_tvalid;
+reg               ftaout_tready;
 //==========================================================================
 
 
@@ -227,8 +232,8 @@ localparam[15:0] udp_checksum   = 0;
 // 2 bytes of magic number
 localparam[15:0] rdmx_magic = 16'h0122;
 
-// 10 bytes of reserved area in the RDMX header
-localparam[10*8-1:0] rdmx_reserved   = 0;
+// 6 bytes of reserved area in the RDMX header
+localparam[6*8-1:0] rdmx_reserved = 0;
 
 // Compute both the IPv4 packet length and UDP packet length
 wire[15:0]       ip4_length     = IP_HDR_LEN + UDP_HDR_LEN + RDMX_HDR_LEN + payload_length;
@@ -251,13 +256,18 @@ wire[15:0] ip4_checksum = ~(ip4_cs32[15:0] + ip4_cs32[31:16]);
 
 // This is the target address of this outgoing packet
 wire[63:0] rdmx_target_addr = (ftaout_tready & ftaout_tvalid) ?
-                               ftaout_tdata : ftaout_tdata_latched;
+                               ftaout_tdata[63:0] : ftaout_tdata_latched[63:0];
+
+// This is the RDMX user field of the outgoing packet
+wire[31:0] rdmx_user_field  = (ftaout_tready & ftaout_tvalid) ?
+                               ftaout_tdata[95:64] : ftaout_tdata_latched[95:64];
+
 
 // This number increments by 1 on every packet
 reg[15:0] rdmx_seq_num;
 
 // This is the 64-byte packet header for an RDMX packet
-wire[DATA_WBITS-1:0] pkt_header =
+wire[DW-1:0] pkt_header =
 {
     // Ethernet header fields - 14 bytes
     eth_dst_mac,
@@ -286,6 +296,7 @@ wire[DATA_WBITS-1:0] pkt_header =
     rdmx_magic,
     rdmx_target_addr,
     rdmx_seq_num,
+    rdmx_user_field,
     rdmx_reserved
 };
 
@@ -293,14 +304,14 @@ wire[DATA_WBITS-1:0] pkt_header =
 // The Ethernet IP sends the bytes from least-sigificant-byte to most-significant-byte.  
 // This means we need to create a little-endian (i.e., reversed) version of our packet 
 // header.
-wire[DATA_WBITS-1:0] pkt_header_le;
+wire[DW-1:0] pkt_header_le;
 genvar i;
-for (i=0; i<(DATA_WBITS/8); i=i+1) begin
-    assign pkt_header_le[i*8 +:8] = pkt_header[(DATA_WBITS/8-1-i)*8 +:8];
+for (i=0; i<(DW/8); i=i+1) begin
+    assign pkt_header_le[i*8 +:8] = pkt_header[(DW/8-1-i)*8 +:8];
 end 
 
 // Determine how many "leftover" bytes there are after dividing
-// payload_length by DATA_WBITS
+// payload_length by DW (i.e., data-width)
 wire[ 7:0] extra_bytes  = (payload_length & REMAINDER_MASK);
 
 //=====================================================================================================================
@@ -405,7 +416,7 @@ end
 xpm_fifo_axis #
 (
    .FIFO_DEPTH      (DATA_FIFO_DEPTH), 
-   .TDATA_WIDTH     (DATA_WBITS),     
+   .TDATA_WIDTH     (DW),     
    .FIFO_MEMORY_TYPE("auto"),       
    .PACKET_FIFO     ("false"),      
    .USE_ADV_FEATURES("0000"),        
@@ -523,12 +534,12 @@ packet_length_fifo
 
 
 //====================================================================================
-// This FIFO holds the target-address of the incoming data packets
+// This FIFO holds the user-field and target-address of the incoming data packets
 //====================================================================================
 xpm_fifo_axis #
 (
    .FIFO_DEPTH      (MAX_PACKET_COUNT),   
-   .TDATA_WIDTH     (ADDR_WBITS),        
+   .TDATA_WIDTH     (UW+AW),        
    .FIFO_MEMORY_TYPE("auto"),       
    .PACKET_FIFO     ("false"),      
    .USE_ADV_FEATURES("0000"),        

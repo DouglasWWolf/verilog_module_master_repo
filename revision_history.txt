@@ -20,5 +20,8 @@
                           resetn is asserted
 
  28-Oct-2024  1.7.0  DWW  Added modules sensor_inject.v and sensor_inject_ctl.v
+
+ 05-Nov-2024  1.8.0  DWW  RDMX now supports a 32-bit user-field in the header
+                          mindy-core now populates RDMX user-field with the frame counter
 ================================================================================================
 
