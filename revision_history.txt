@@ -23,5 +23,7 @@
 
  05-Nov-2024  1.8.0  DWW  RDMX now supports a 32-bit user-field in the header
                           mindy-core now populates RDMX user-field with the frame counter
+
+ 19-Mar-2025  1.9.0  DWW  ldp_manager.v is now compatible with simulated PCIe bridge
 ================================================================================================
 

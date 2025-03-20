@@ -5,6 +5,9 @@
 //   Date     Who   Ver  Changess
 //=============================================================================
 // 05-Jun-24  DWW     1  Initial creation
+//
+// 19-Mar-25  DWW     2  The first AW request of a frame will now hold AWVALID
+//                       high until the PCIe bridge acknowledges via AWREADY
 //=============================================================================
 
 /* 
@@ -62,6 +65,9 @@ module ldp_manager # (parameter DW=512, AW=64)
     // The highest and lowest number of clock cycles to emit an entire frame
     output reg[31:0] max_frame_cycles, min_frame_cycles,
 
+    // This will be high on the first data-cycle of every data-frame
+    output start_of_frame,
+
     //==================  This is an AXI4-master interface  ===================
 
     // "Specify write address"              -- Master --    -- Slave --
@@ -95,6 +101,7 @@ module ldp_manager # (parameter DW=512, AW=64)
     output     [2:0]                        M_AXI_ARPROT,
     output                                  M_AXI_ARLOCK,
     output     [3:0]                        M_AXI_ARID,
+    output     [2:0]                        M_AXI_ARSIZE,
     output     [7:0]                        M_AXI_ARLEN,
     output     [1:0]                        M_AXI_ARBURST,
     output     [3:0]                        M_AXI_ARCACHE,
@@ -159,18 +166,22 @@ localparam AWSM_EMIT_FC_WRITE_REQ  = 4;
 // This is 1-based beat number of a write-burst
 reg[7:0] beat;
 
-// This is 1-based frame-counter
-reg[31:0] frame_counter;
+// This counts the number of times we have emitted the AW-request for
+// the first burst of a new frame
+reg [31:0] aw_frames;
 
 // This is true when the AW state-machine is generating frame-data write requests
 reg awsm_fd_write;
 
-// The first frame-data cycle is defined as a W-handshake occurs while the W-channel
-// state machine is waiting for the first data-cycle of the frame.
-wire first_cycle_of_frame = (resetn == 1) & (wsm_state == WSM_WAIT_FIRST_FD) & M_AXI_WREADY & M_AXI_WVALID; 
+// This is true when the first data-cycle of a frame has arrived
+assign start_of_frame = (resetn == 1) & (wsm_state == WSM_WAIT_FIRST_FD) & M_AXI_WVALID; 
 
-// This determines when we will start issuing transactions in the AW-channel of M_AXI
-wire issue_aw_requests  = (resetn == 1) & (wsm_state == WSM_WAIT_FIRST_FD) & axis_fd_tvalid;
+// This is true when the first data-cycle of a frame has been acknowledged
+wire first_handshake_of_frame = start_of_frame & M_AXI_WREADY;
+
+// This is 1-based frame-counter
+reg [31:0] frame_counter_reg;
+wire[31:0] frame_counter = frame_counter_reg + start_of_frame;
 
 // We're ready for write-acknowledgements any time we're not in reset
 assign M_AXI_BREADY = (resetn == 1);
@@ -181,6 +192,7 @@ assign M_AXI_ARADDR  = 0;
 assign M_AXI_ARPROT  = 0;
 assign M_AXI_ARLOCK  = 0;
 assign M_AXI_ARID    = 0;
+assign M_AXI_ARSIZE  = 0;
 assign M_AXI_ARLEN   = 0;
 assign M_AXI_ARBURST = 0;
 assign M_AXI_ARCACHE = 0;
@@ -189,8 +201,9 @@ assign M_AXI_RREADY  = 0;
 
 
 //==============================================================================
-// Whenever "first_cycle_of_frame" strobes high, this state machine will read in 
-// two data-cycle of metadata and store them in metadata[0] and metadata[1].
+// Whenever "first_handshake_of_frame" strobes high, this state machine will 
+// read in two data-cycle of metadata and store them in metadata[0] and
+// metadata[1].
 //==============================================================================
 reg [1:0] rmd_state;
 assign    axis_md_tready = (resetn == 1) & (rmd_state != 0);
@@ -205,7 +218,7 @@ always @(posedge clk) begin
     
     else case (rmd_state)
 
-        0:  if (first_cycle_of_frame) begin
+        0:  if (first_handshake_of_frame) begin
                 rmd_state <= 1;
             end
 
@@ -378,7 +391,6 @@ end
 
 
 
-
 //==============================================================================
 // This controls the AW-channel of the M_AXI master interface
 //==============================================================================
@@ -398,7 +410,7 @@ always @* begin
                 awsm_fd_write = 1;
                 M_AXI_AWADDR  = (group_select == 0) ? fd0_address : fd1_address;
                 M_AXI_AWLEN   = FD_BEATS_PER_BURST - 1;
-                M_AXI_AWVALID = issue_aw_requests;
+                M_AXI_AWVALID = (aw_frames != frame_counter);
             end
 
         // Are we emitting a write-request for subsequent frame-data?
@@ -463,8 +475,6 @@ assign M_AXI_AWPROT  = 0;
 
 
 
-
-
 //==============================================================================
 // This state machine issues the write-requests on the AW-channel.   
 //==============================================================================
@@ -474,39 +484,43 @@ always @(posedge clk) begin
 
     if (resetn == 0) begin
         awsm_state  <= AWSM_EMIT_FIRST_FD_REQ;
-    end else case (awsm_state)
+        aw_frames   <= 0;
+    end
+    
+    else case (awsm_state)
 
-    // Emit the first write-request
-    AWSM_EMIT_FIRST_FD_REQ:
-        if (M_AXI_AWVALID & M_AXI_AWREADY) begin
-            aw_fd_burst <= 2;
-            awsm_state  <= AWSM_EMIT_FD_WRITE_REQS;
-        end
-
-    // Emit as many write-request as we need for the entire data-frame
-    AWSM_EMIT_FD_WRITE_REQS:
-        if (M_AXI_AWVALID & M_AXI_AWREADY) begin
-            if (aw_fd_burst < FD_BURSTS_PER_FRAME)
-                aw_fd_burst <= aw_fd_burst + 1;
-            else
-                awsm_state <= AWSM_EMIT_MD_WRITE_REQ0;
-        end
-
-    // Emit the write-request for the 1st copy of meta-data
-    AWSM_EMIT_MD_WRITE_REQ0:
-        if (M_AXI_AWVALID & M_AXI_AWREADY)
-            awsm_state <= AWSM_EMIT_MD_WRITE_REQ1;
-
-    // Emit the write-request for the 2nd copy of meta-data
-    AWSM_EMIT_MD_WRITE_REQ1:
-        if (M_AXI_AWVALID & M_AXI_AWREADY)
-            awsm_state <= AWSM_EMIT_FC_WRITE_REQ;
-
-    // Emit the write-request for the frame-counter
-    AWSM_EMIT_FC_WRITE_REQ:
-        if (M_AXI_AWVALID & M_AXI_AWREADY) begin
-            awsm_state <= AWSM_EMIT_FIRST_FD_REQ;
-        end
+        // Emit the first write-request
+        AWSM_EMIT_FIRST_FD_REQ:
+            if (M_AXI_AWVALID & M_AXI_AWREADY) begin
+                aw_frames   <= aw_frames + 1;
+                aw_fd_burst <= 2;
+                awsm_state  <= AWSM_EMIT_FD_WRITE_REQS;
+            end
+    
+        // Emit as many write-request as we need for the entire data-frame
+        AWSM_EMIT_FD_WRITE_REQS:
+            if (M_AXI_AWVALID & M_AXI_AWREADY) begin
+                if (aw_fd_burst < FD_BURSTS_PER_FRAME)
+                    aw_fd_burst <= aw_fd_burst + 1;
+                else
+                    awsm_state <= AWSM_EMIT_MD_WRITE_REQ0;
+            end
+    
+        // Emit the write-request for the 1st copy of meta-data
+        AWSM_EMIT_MD_WRITE_REQ0:
+            if (M_AXI_AWVALID & M_AXI_AWREADY)
+                awsm_state <= AWSM_EMIT_MD_WRITE_REQ1;
+    
+        // Emit the write-request for the 2nd copy of meta-data
+        AWSM_EMIT_MD_WRITE_REQ1:
+            if (M_AXI_AWVALID & M_AXI_AWREADY)
+                awsm_state <= AWSM_EMIT_FC_WRITE_REQ;
+    
+        // Emit the write-request for the frame-counter
+        AWSM_EMIT_FC_WRITE_REQ:
+            if (M_AXI_AWVALID & M_AXI_AWREADY) begin
+                awsm_state <= AWSM_EMIT_FIRST_FD_REQ;
+            end
 
     endcase
 
@@ -631,25 +645,27 @@ always @(posedge clk) begin
     elapsed <= elapsed + 1;
 
     if (resetn == 0) begin
-        beat             <= 0;
-        w_fd_burst       <= 0;
-        frame_counter    <= 0;
-        wsm_state        <= WSM_WAIT_FIRST_FD;
-        max_frame_cycles <= 0;
-        min_frame_cycles <= -1;
+        beat              <= 0;
+        w_fd_burst        <= 0;
+        frame_counter_reg <= 0;
+        wsm_state         <= WSM_WAIT_FIRST_FD;
+        max_frame_cycles  <= 0;
+        min_frame_cycles  <= -1;
     end 
 
     else case(wsm_state)
 
+        // Here we're waiting for the first data-cycle of a new data frame
         WSM_WAIT_FIRST_FD:
             if (M_AXI_WVALID & M_AXI_WREADY) begin
-                elapsed       <= 1;
-                frame_counter <= frame_counter + 1;
-                beat          <= 2;
-                w_fd_burst    <= 1;
-                wsm_state     <= WSM_WAIT_REMAINING_FD;
+                elapsed           <= 1;
+                frame_counter_reg <= frame_counter_reg + 1;
+                beat              <= 2;
+                w_fd_burst        <= 1;
+                wsm_state         <= WSM_WAIT_REMAINING_FD;
             end
 
+        // Here we're waiting for all subsequent data-cycles of a data frame
         WSM_WAIT_REMAINING_FD:
             if (M_AXI_WVALID & M_AXI_WREADY) begin
                 beat <= beat + 1;
