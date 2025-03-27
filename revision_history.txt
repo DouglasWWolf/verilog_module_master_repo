@@ -1,29 +1,32 @@
 ================================================================================================
-    Date      Vers   Who  Changes
+    Date      Vers    Who  Changes
  -----------------------------------------------------------------------------------------------
- 26-Jul-2024  1.0.0  DWW  First numbered version
+ 26-Jul-2024  1.0.0   DWW  First numbered version
 
- 26-Jul-2024  1.1.0  DWW  "data_mover.v" now deasserts VALID/READY lines immediately at reset
+ 26-Jul-2024  1.1.0   DWW  "data_mover.v" now deasserts VALID/READY lines immediately at reset
 
- 25-Aug-2024  1.2.0  DWW  Added module "sensor_trace.v"
+ 25-Aug-2024  1.2.0   DWW  Added module "sensor_trace.v"
 
- 30-Aug-2024  1.3.0  DWW  Added module "ns_txpkt_counter.v"
+ 30-Aug-2024  1.3.0   DWW  Added module "ns_txpkt_counter.v"
 
- 01-Sep-2024  1.4.0  DWW  Added module "ns_rxpkt_counter.v".
-                          Registered inputs of "ns_txpkt_counter.v" to ease timing
+ 01-Sep-2024  1.4.0   DWW  Added module "ns_rxpkt_counter.v".
+                            Registered inputs of "ns_txpkt_counter.v" to ease timing
 
- 17-Oct-2024  1.5.0  DWW  Changed size of counters in ns_*x_pkt_counter from 32 to 64 bits.
+ 17-Oct-2024  1.5.0   DWW  Changed size of counters in ns_*x_pkt_counter from 32 to 64 bits.
 
- 17-Oct-2024  1.6.0  DWW  Added module "cmac_bp_monitor.v"
+ 17-Oct-2024  1.6.0   DWW  Added module "cmac_bp_monitor.v"
 
- 18-Oct-2024  1.6.1  DWW  Minor change to cmac_bp_monitor.v to initialize fsm_state when
-                          resetn is asserted
+ 18-Oct-2024  1.6.1   DWW  Minor change to cmac_bp_monitor.v to initialize fsm_state when
+                           resetn is asserted
 
- 28-Oct-2024  1.7.0  DWW  Added modules sensor_inject.v and sensor_inject_ctl.v
+ 28-Oct-2024  1.7.0   DWW  Added modules sensor_inject.v and sensor_inject_ctl.v
 
- 05-Nov-2024  1.8.0  DWW  RDMX now supports a 32-bit user-field in the header
-                          mindy-core now populates RDMX user-field with the frame counter
+ 05-Nov-2024  1.8.0   DWW  RDMX now supports a 32-bit user-field in the header
+                           mindy-core now populates RDMX user-field with the frame counter
 
- 19-Mar-2025  1.9.0  DWW  ldp_manager.v is now compatible with simulated PCIe bridge
+ 19-Mar-2025  1.9.0   DWW  ldp_manager.v is now compatible with simulated PCIe bridge
+
+ 27-Mar-2025  1.10.0  DWW  Minor fixes to rdmx_xmit.v, rdmx_xmit_be.v, and rdmx_xmit_fe.v
+                           Drop-in replacement (wholesale rewrite) of bad_packet_filter.v
 ================================================================================================
 

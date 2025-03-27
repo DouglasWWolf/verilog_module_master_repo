@@ -10,6 +10,8 @@
 // 12-Jan-24  DWW  1001  Changed name to RDMX
 //
 // 05-Nov-24  DWW  1002  Added "user-field" to the RDMX header
+//
+// 26-Mar-25  DWW  1003  Fixed AXIS_TX_TKEEP width from "DW" to "DW/8"
 //====================================================================================
 /*
 
@@ -136,7 +138,7 @@ module rdmx_xmit_be #
     //     Outgoing UDP/RDMX packet, synchronous to dst_clk
     //==========================================================================
     output [DW-1:0]   AXIS_TX_TDATA,
-    output [DW-1:0]   AXIS_TX_TKEEP,
+    output [DW/8-1:0] AXIS_TX_TKEEP,
     output            AXIS_TX_TLAST,
     output            AXIS_TX_TVALID,
     input             AXIS_TX_TREADY,

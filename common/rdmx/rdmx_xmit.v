@@ -17,6 +17,8 @@
 //
 // 05-Nov-24  DWW  1004  Removed obsolete signal "addr_fifo_debug"
 //                       Now stamping frame-number into the packet header
+//
+// 26-Mar-24  DWW  1005  Added missing port S_AXI_ARSIZE
 //====================================================================================
 
 /*
@@ -138,6 +140,7 @@ module rdmx_xmit #
     input                                   S_AXI_ARLOCK,
     input[3:0]                              S_AXI_ARID,
     input[7:0]                              S_AXI_ARLEN,
+    input[2:0]                              S_AXI_ARSIZE,
     input[1:0]                              S_AXI_ARBURST,
     input[3:0]                              S_AXI_ARCACHE,
     input[3:0]                              S_AXI_ARQOS,
@@ -220,6 +223,7 @@ front_end
     .S_AXI_ARLOCK   (S_AXI_ARLOCK ),
     .S_AXI_ARID     (S_AXI_ARID   ),
     .S_AXI_ARLEN    (S_AXI_ARLEN  ),
+    .S_AXI_ARSIZE   (S_AXI_ARSIZE ),
     .S_AXI_ARBURST  (S_AXI_ARBURST),
     .S_AXI_ARCACHE  (S_AXI_ARCACHE),
     .S_AXI_ARQOS    (S_AXI_ARQOS  ),

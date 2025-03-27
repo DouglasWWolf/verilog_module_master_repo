@@ -5,8 +5,7 @@
 //
 //   Date     Who   Ver  Changes
 //=============================================================================
-// 01-Nov-23  DWW     1  Initial creation
-// 06-May-24  DWW     2  Added "mark only" mechanism
+// 23-Mar-25  DWW     1  Initial creation
 //=============================================================================
 
 /*
@@ -24,14 +23,14 @@
 module bad_packet_filter #
 (
     parameter DW             = 512,
-    parameter FIFO_DEPTH     = 128,
+    parameter FIFO_DEPTH     = 256,
     parameter MARK_ONLY_MODE = 0
 )
 (
     input clk, resetn,
 
-    // Latches high is a bad packet is encountered
-    output reg bad_packet_found,
+    // Strobes high for one cycle to signal a bad packet
+    output bad_packet_strb,
 
     // Input stream
     input[DW-1:0]      AXIS_IN_TDATA,
@@ -50,140 +49,28 @@ module bad_packet_filter #
     input              AXIS_OUT_TREADY    
 );
 
+// This is the TVALID output from the output side of the packet-data FIFO
+wire pdf_out_tvalid;
 
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//           This section manages the input side of the FIFOs
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+// Entries get added to the "end of packet" FIFO on the last cycle of each incoming packet
+wire feop_in_tvalid = AXIS_IN_TVALID & AXIS_IN_TREADY & AXIS_IN_TLAST;
 
-// The input side of the FIFO that contains packet data
-wire[DW-1:0]     fpkt_in_tdata;
-wire[(DW/8)-1:0] fpkt_in_tkeep;
-wire             fpkt_in_tlast;
-wire             fpkt_in_tvalid;
-wire             fpkt_in_tready;
+// This is TVALID from the output side of the "end of packet" FIFO
+wire feop_out_tvalid;
 
-// The input side of the FIFO that contains bad-packet-indicators
-wire[7:0]        feop_in_tdata;
-wire             feop_in_tvalid;
-wire             feop_in_tready;
+// This is the TREADY input to the output side of "end of packet" FIFO.  Every 
+// time this cycles high, it will cause the "end of packet" FIFO to advance to 
+// the next entry
+wire feop_out_tready = pdf_out_tvalid & AXIS_OUT_TREADY & AXIS_OUT_TLAST;
 
-// The input side of the packet fifo is driven by AXIS IN
-assign fpkt_in_tdata  = AXIS_IN_TDATA;
-assign fpkt_in_tkeep  = AXIS_IN_TKEEP;
-assign fpkt_in_tlast  = AXIS_IN_TLAST;
-assign fpkt_in_tvalid = AXIS_IN_TVALID;
+// This strobes high for a single cycle anytime we encounter a bad packet
+assign bad_packet_strb = AXIS_IN_TVALID & AXIS_IN_TREADY & AXIS_IN_TLAST & AXIS_IN_TUSER;
 
-// The input side of the eop FIFO is driven by end-of-packet cycles on AXIS_IN
-assign feop_in_tdata  = AXIS_IN_TUSER;
-assign feop_in_tvalid = AXIS_IN_TVALID & AXIS_IN_TLAST;
+// We can output data if this packet is good or if we're in "mark only mode"
+wire output_enable = (AXIS_OUT_TUSER == 0) | (MARK_ONLY_MODE == 1);
 
-// We're ready for incoming data any time the packet FIFO receiver is
-assign AXIS_IN_TREADY = fpkt_in_tready;
-
-
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//           This section manages the output side of the FIFOs
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-//<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-
-// The output side of the packet data FIFO
-wire[DW-1:0]     fpkt_out_tdata;
-wire[(DW/8)-1:0] fpkt_out_tkeep;
-wire             fpkt_out_tlast;
-wire             fpkt_out_tvalid;
-wire             fpkt_out_tready;    
-
-// The output side of the "bad packet indicators" FIFO
-wire[7:0]        feop_out_tdata;
-wire             feop_out_tvalid;
-wire             feop_out_tready;    
-
-
-// The current state of the state machine
-reg[1:0]   fsm_state; 
-localparam FSM_INIT             = 0;
-localparam FSM_WAIT_FIRST_CYCLE = 1;
-localparam FSM_XFER_PACKET      = 2;
-
-// This is true any time we're waiting for the first cycle of a packet to arrive
-wire waiting_first_cycle = (fsm_state == FSM_WAIT_FIRST_CYCLE);
-
-// This is true any time we're transferring the 2nd or subsequent cycle of a packet
-wire transferring_packet = (fsm_state == FSM_XFER_PACKET);
-
-// bad_packet will be a 1 if the current packet being output to AXIS_OUT is bad
-reg bad_packet_reg;
-wire bad_packet = waiting_first_cycle ? feop_out_tdata[0] : bad_packet_reg;
-
-// Whether or not bad packets are output depends on which mode we are in
-wire output_enable = (MARK_ONLY_MODE == 0) ? ~bad_packet : 1;
-
-// We're ready for incoming EOP data when the output stream is ready for data
-assign feop_out_tready = waiting_first_cycle & AXIS_OUT_TREADY;
-
-// This defines a data-beat on the on the output side of the eop FIFO
-wire fifo_eop_handshake = feop_out_tready & feop_out_tvalid;
-
-// We're ready to accept incoming packet data:
-//  (1) The moment we're told that a full packet is ready to receive
-//  (2) While the module on the other end of the output stream is ready to receive
-assign fpkt_out_tready = (waiting_first_cycle & fifo_eop_handshake)
-                       | (transferring_packet & AXIS_OUT_TREADY   );
-
-// The output stream is largely driven from the incoming packet stream
-assign AXIS_OUT_TDATA  = fpkt_out_tdata;
-assign AXIS_OUT_TKEEP  = fpkt_out_tkeep;
-assign AXIS_OUT_TUSER  = bad_packet;
-assign AXIS_OUT_TLAST  = fpkt_out_tlast;
-assign AXIS_OUT_TVALID = (waiting_first_cycle & feop_out_tvalid & output_enable)
-                       | (transferring_packet & fpkt_out_tvalid & output_enable);
-
-//====================================================================================
-// This state machine manages the two FIFOS
-//====================================================================================
-
-always @(posedge clk) begin 
-    if (resetn == 0) begin
-        fsm_state        <= FSM_INIT;
-        bad_packet_found <= 0;
-    end
-    
-    else case (fsm_state)
-
-        FSM_INIT:
-            fsm_state <= FSM_WAIT_FIRST_CYCLE;
-
-        // If an "end of packet" arrives, save it
-        FSM_WAIT_FIRST_CYCLE:
-            if (fifo_eop_handshake) begin
-                bad_packet_reg <= feop_out_tdata[0];
-            
-                if (bad_packet) 
-                    bad_packet_found <= 1;
-
-                if (fpkt_out_tlast == 0)
-                    fsm_state <= FSM_XFER_PACKET;
-            end
-
-        // Wait for the last cycle of packet data to be transferred
-        FSM_XFER_PACKET:
-            if (fpkt_out_tready & fpkt_out_tvalid & fpkt_out_tlast) begin
-                fsm_state  <= FSM_WAIT_FIRST_CYCLE;
-            end
-    endcase
-
-end
-//====================================================================================
-
-
-
+// We output data on the output bus whenever it's available from the FIFO
+assign AXIS_OUT_TVALID = (output_enable & feop_out_tvalid);
 
 //====================================================================================
 // This FIFO holds the incoming packet data
@@ -191,7 +78,7 @@ end
 xpm_fifo_axis #
 (
    .FIFO_DEPTH      (FIFO_DEPTH),   // DECIMAL
-   .TDATA_WIDTH     (DW),   // DECIMAL
+   .TDATA_WIDTH     (DW),           // DECIMAL
    .FIFO_MEMORY_TYPE("auto"    ),   // String
    .PACKET_FIFO     ("false"   ),   // String
    .USE_ADV_FEATURES("0000"    )    // String
@@ -204,18 +91,18 @@ packet_data_fifo
    .s_aresetn(resetn),
 
     // The input of this FIFO is driven directly by AXIS_IN
-   .s_axis_tdata (fpkt_in_tdata ),  /* Input  */
-   .s_axis_tkeep (fpkt_in_tkeep ),  /* Input  */
-   .s_axis_tlast (fpkt_in_tlast ),  /* Input  */
-   .s_axis_tvalid(fpkt_in_tvalid),  /* Input  */
-   .s_axis_tready(fpkt_in_tready),  /* Output */
+   .s_axis_tdata (AXIS_IN_TDATA ),  /* Input  */
+   .s_axis_tkeep (AXIS_IN_TKEEP ),  /* Input  */
+   .s_axis_tlast (AXIS_IN_TLAST ),  /* Input  */
+   .s_axis_tvalid(AXIS_IN_TVALID),  /* Input  */
+   .s_axis_tready(AXIS_IN_TREADY),  /* Output */
 
     // The output of this FIFO (mostly) drives AXIS_OUT
-   .m_axis_tdata (fpkt_out_tdata ), /* Output */     
-   .m_axis_tkeep (fpkt_out_tkeep ), /* Output */
-   .m_axis_tlast (fpkt_out_tlast ), /* Output */         
-   .m_axis_tvalid(fpkt_out_tvalid), /* Output */       
-   .m_axis_tready(fpkt_out_tready), /* Input  */
+   .m_axis_tdata (AXIS_OUT_TDATA ), /* Output */     
+   .m_axis_tkeep (AXIS_OUT_TKEEP ), /* Output */
+   .m_axis_tlast (AXIS_OUT_TLAST ), /* Output */         
+   .m_axis_tvalid(pdf_out_tvalid ), /* Output */       
+   .m_axis_tready(feop_out_tvalid & AXIS_OUT_TREADY), /* Input  */
 
     // Unused input stream signals
    .s_axis_tdest(),
@@ -263,14 +150,14 @@ eop_fifo
    .s_aresetn(resetn),
 
     // The input of this FIFO is active once per packet
-   .s_axis_tdata (feop_in_tdata ),  /* Input  */
-   .s_axis_tvalid(feop_in_tvalid),  /* Input  */
-   .s_axis_tready(feop_in_tready),  /* Output */
+   .s_axis_tdata (AXIS_IN_TUSER ), 
+   .s_axis_tvalid(feop_in_tvalid),
+   .s_axis_tready(              ),
 
     // This FIFO outputs one entry per packet
-   .m_axis_tdata (feop_out_tdata ), /* Output */
-   .m_axis_tvalid(feop_out_tvalid), /* Output */      
-   .m_axis_tready(feop_out_tready), /* Input  */
+   .m_axis_tdata (AXIS_OUT_TUSER),
+   .m_axis_tvalid(feop_out_tvalid),
+   .m_axis_tready(feop_out_tready),
 
     // Unused input stream signals
    .s_axis_tlast(),
@@ -301,8 +188,6 @@ eop_fifo
    .injectsbiterr_axis()
 );
 //====================================================================================
-
-
 
 
 endmodule
