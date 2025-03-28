@@ -28,5 +28,7 @@
 
  27-Mar-2025  1.10.0  DWW  Minor fixes to rdmx_xmit.v, rdmx_xmit_be.v, and rdmx_xmit_fe.v
                            Drop-in replacement (wholesale rewrite) of bad_packet_filter.v
+
+ 27-Mar-2025  1.11.0  DWW  Added labm_manager.v
 ================================================================================================
 
