@@ -8,6 +8,9 @@
 //
 // 19-Mar-25  DWW     2  The first AW request of a frame will now hold AWVALID
 //                       high until the PCIe bridge acknowledges via AWREADY
+//
+// 28-Mar-25  DWW     3  Now writing the frame counters to two distinct
+//                       buffers in host RAM
 //=============================================================================
 
 /* 
@@ -16,12 +19,12 @@
    one of meta-data.
 
    There are two host-RAM buffers for frame-data, two host-RAM buffers for 
-   meta-data, and a host-RAM buffer for two side-by-side frame-counters.
+   meta-data, and two host-RAM buffers frame-counters.
 
    Frame-data is "ping-ponged" between the two frame-data buffers, 16K at
    a time.   After a frame is written, the meta-data is written, with identical
    copies being written to each meta-data buffer in host-RAM.   After meta-data
-   has been written, the frame-counter is written.
+   has been written, the frame-counters are written.
 
    It is assumed that the M_AXI output of this module will feed a PCIe bus.  
    There has intentionally been no attempt made to enforce any PCIe write-
@@ -44,13 +47,12 @@ module ldp_manager # (parameter DW=512, AW=64)
     input[63:0]     FD0_RING_ADDR, FD1_RING_ADDR,
     input[63:0]     FD_RING_SIZE,
 
-
     // The base address and size of the two meta-data buffers in host-RAM
     input[63:0]     MD0_RING_ADDR, MD1_RING_ADDR,
     input[63:0]     MD_RING_SIZE,
 
-    // The address of the frame-counter in host-RAM
-    input[63:0]     FC_ADDR,
+    // The addresses of the frame-counters in host-RAM
+    input[63:0]     FC0_ADDR, FC1_ADDR,
 
     // An input stream of frame-data
     input[DW-1:0]   axis_fd_tdata,
@@ -144,7 +146,7 @@ wire[31:0] FD_BURSTS_PER_FRAME = FRAME_SIZE / (BYTES_PER_FD_BURST);
 reg [DW-1:0] metadata[0:1];
 
 // The state of the state machine that drives the W-channel of M_AXI
-reg[2:0]   wsm_state;
+reg[3:0]   wsm_state;
 localparam WSM_RESET             = 0;
 localparam WSM_WAIT_FIRST_FD     = 1;
 localparam WSM_WAIT_REMAINING_FD = 2;
@@ -152,16 +154,17 @@ localparam WSM_WRITE_MD00        = 3;
 localparam WSM_WRITE_MD01        = 4;
 localparam WSM_WRITE_MD10        = 5;
 localparam WSM_WRITE_MD11        = 6;
-localparam WSM_WRITE_FC          = 7;
-
+localparam WSM_WRITE_FC0         = 7;
+localparam WSM_WRITE_FC1         = 8;
 
 // The state of the state-machine that controls the AW-channel of M_AXI
 reg[2:0]   awsm_state;
 localparam AWSM_EMIT_FIRST_FD_REQ  = 0;
 localparam AWSM_EMIT_FD_WRITE_REQS = 1;
-localparam AWSM_EMIT_MD_WRITE_REQ0 = 2;
-localparam AWSM_EMIT_MD_WRITE_REQ1 = 3;
-localparam AWSM_EMIT_FC_WRITE_REQ  = 4;
+localparam AWSM_EMIT_MD0_WRITE_REQ = 2;
+localparam AWSM_EMIT_MD1_WRITE_REQ = 3;
+localparam AWSM_EMIT_FC0_WRITE_REQ = 4;
+localparam AWSM_EMIT_FC1_WRITE_REQ = 5;
 
 // This is 1-based beat number of a write-burst
 reg[7:0] beat;
@@ -292,7 +295,7 @@ wire inc_fd_pointer = (resetn == 1)
 // We will increment the meta-data pointer every time we write the frame-counter
 //==============================================================================
 wire inc_md_pointer = (resetn == 1)
-                    & (awsm_state == AWSM_EMIT_FC_WRITE_REQ)
+                    & (awsm_state == AWSM_EMIT_FC1_WRITE_REQ)
                     & M_AXI_AWVALID
                     & M_AXI_AWREADY;
 //==============================================================================
@@ -423,7 +426,7 @@ always @* begin
             end
         
         // Are we emiting a write-request for the 1st copy of metadata?
-        AWSM_EMIT_MD_WRITE_REQ0:
+        AWSM_EMIT_MD0_WRITE_REQ:
             begin
                 awsm_fd_write = 0;
                 M_AXI_AWADDR  = md0_address;
@@ -432,7 +435,7 @@ always @* begin
             end
 
         // Are we emiting a write-request for the 2nd copy of metadata?
-        AWSM_EMIT_MD_WRITE_REQ1:
+        AWSM_EMIT_MD1_WRITE_REQ:
             begin
                 awsm_fd_write = 0;
                 M_AXI_AWADDR  = md1_address;
@@ -440,15 +443,24 @@ always @* begin
                 M_AXI_AWVALID = 1;
             end
 
-        // Are we emitting a write-request for the frame-counters?
-        AWSM_EMIT_FC_WRITE_REQ:
+        // Are we emitting a write-request for the 1st copy of the frame counter?
+        AWSM_EMIT_FC0_WRITE_REQ:
             begin
                 awsm_fd_write = 0;                
-                M_AXI_AWADDR  = FC_ADDR;
+                M_AXI_AWADDR  = FC0_ADDR;
                 M_AXI_AWLEN   = 0;
                 M_AXI_AWVALID = 1;  
             end
     
+        // Are we emitting a write-request for the 2nd copy of the frame counter?
+        AWSM_EMIT_FC1_WRITE_REQ:
+            begin
+                awsm_fd_write = 0;                
+                M_AXI_AWADDR  = FC1_ADDR;
+                M_AXI_AWLEN   = 0;
+                M_AXI_AWVALID = 1;  
+            end
+
         // We'll never get here
         default:
             begin
@@ -503,24 +515,30 @@ always @(posedge clk) begin
                 if (aw_fd_burst < FD_BURSTS_PER_FRAME)
                     aw_fd_burst <= aw_fd_burst + 1;
                 else
-                    awsm_state <= AWSM_EMIT_MD_WRITE_REQ0;
+                    awsm_state <= AWSM_EMIT_MD0_WRITE_REQ;
             end
     
         // Emit the write-request for the 1st copy of meta-data
-        AWSM_EMIT_MD_WRITE_REQ0:
+        AWSM_EMIT_MD0_WRITE_REQ:
             if (M_AXI_AWVALID & M_AXI_AWREADY)
-                awsm_state <= AWSM_EMIT_MD_WRITE_REQ1;
+                awsm_state <= AWSM_EMIT_MD1_WRITE_REQ;
     
         // Emit the write-request for the 2nd copy of meta-data
-        AWSM_EMIT_MD_WRITE_REQ1:
+        AWSM_EMIT_MD1_WRITE_REQ:
             if (M_AXI_AWVALID & M_AXI_AWREADY)
-                awsm_state <= AWSM_EMIT_FC_WRITE_REQ;
+                awsm_state <= AWSM_EMIT_FC0_WRITE_REQ;
     
-        // Emit the write-request for the frame-counter
-        AWSM_EMIT_FC_WRITE_REQ:
+        // Emit the write-request for the 1st copy of the frame-counter
+        AWSM_EMIT_FC0_WRITE_REQ:
+            if (M_AXI_AWVALID & M_AXI_AWREADY) begin
+                awsm_state <= AWSM_EMIT_FC1_WRITE_REQ;
+            end
+        // Emit the write-request for the 2nd copy of the frame-counter
+        AWSM_EMIT_FC1_WRITE_REQ:
             if (M_AXI_AWVALID & M_AXI_AWREADY) begin
                 awsm_state <= AWSM_EMIT_FIRST_FD_REQ;
             end
+
 
     endcase
 
@@ -604,12 +622,22 @@ always @* begin
                 M_AXI_WVALID   = 1;
             end            
 
-        // Are we writing the framer-counters?
-        WSM_WRITE_FC:
+        // Are we writing the 1st copy of the frame-counter?
+        WSM_WRITE_FC0:
             begin
                 axis_fd_tready = 0;
-                M_AXI_WDATA    = {frame_counter, frame_counter};
-                M_AXI_WSTRB    = {4'b1111, 4'b1111};
+                M_AXI_WDATA    = frame_counter;
+                M_AXI_WSTRB    = 4'b1111;
+                M_AXI_WLAST    = 1;
+                M_AXI_WVALID   = 1;
+            end      
+
+        // Are we writing the 2nd copy of the frame-counter?
+        WSM_WRITE_FC1:
+            begin
+                axis_fd_tready = 0;
+                M_AXI_WDATA    = frame_counter;
+                M_AXI_WSTRB    = 4'b1111;
                 M_AXI_WLAST    = 1;
                 M_AXI_WVALID   = 1;
             end      
@@ -692,9 +720,13 @@ always @(posedge clk) begin
 
         WSM_WRITE_MD11:
             if (M_AXI_WVALID & M_AXI_WREADY)
-                wsm_state <= WSM_WRITE_FC;
+                wsm_state <= WSM_WRITE_FC0;
 
-        WSM_WRITE_FC:
+        WSM_WRITE_FC0:
+            if (M_AXI_WVALID & M_AXI_WREADY)
+                wsm_state <= WSM_WRITE_FC1;
+
+        WSM_WRITE_FC1:
            if (M_AXI_WVALID & M_AXI_WREADY) begin
                 if (elapsed > max_frame_cycles)
                     max_frame_cycles <= elapsed;
