@@ -23,31 +23,31 @@ module axi4_lite_plug # (parameter DW=32, parameter AW=32)
     //====================  An AXI4-Lite Master Interface  =====================
 
     // "Specify write address"          -- Master --    -- Slave --
-    output[AW-1:0]                      M_AXI_AWADDR,
-    output                              M_AXI_AWVALID,
+    output reg[AW-1:0]                  M_AXI_AWADDR,
+    output reg                          M_AXI_AWVALID,
     input                                               M_AXI_AWREADY,
 
     // "Write Data"                     -- Master --    -- Slave --
-    output[DW-1:0]                      M_AXI_WDATA,
-    output[DW/8-1:0]                    M_AXI_WSTRB,
-    output                              M_AXI_WVALID,
+    output reg[DW-1:0]                  M_AXI_WDATA,
+    output reg[DW/8-1:0]                M_AXI_WSTRB,
+    output reg                          M_AXI_WVALID,
     input                                               M_AXI_WREADY,
 
     // "Send Write Response"            -- Master --    -- Slave --
     input[1:0]                                          M_AXI_BRESP,
     input                                               M_AXI_BVALID,
-    output                              M_AXI_BREADY,
+    output reg                          M_AXI_BREADY,
 
     // "Specify read address"           -- Master --    -- Slave --
-    output[AW-1:0]                      M_AXI_ARADDR,
-    output                              M_AXI_ARVALID,
+    output reg[AW-1:0]                  M_AXI_ARADDR,
+    output reg                          M_AXI_ARVALID,
     input                                               M_AXI_ARREADY,
 
     // "Read data back to master"       -- Master --    -- Slave --
     input[DW-1:0]                                       M_AXI_RDATA,
     input                                               M_AXI_RVALID,
     input[1:0]                                          M_AXI_RRESP,
-    output                              M_AXI_RREADY
+    output reg                          M_AXI_RREADY
     //==========================================================================
 );
 
