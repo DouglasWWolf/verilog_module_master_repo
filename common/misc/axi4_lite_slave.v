@@ -2,10 +2,11 @@
 //                        ------->  Revision History  <------
 //====================================================================================
 //
-//   Date     Who   Ver  Changess
+//   Date     Who   Ver  Changes
 //====================================================================================
 // 10-May-22  DWW     1  Initial creation
 // 03-May-24  DWW     2  Minor cleanup
+// 16-Apr-25  DWW     3  Removed the AXI_WSTRB port
 //====================================================================================
 
 
@@ -41,7 +42,6 @@ module axi4_lite_slave # (parameter ADDR_MASK = 8'hFF)
     // "Write Data"                         -- Master --    -- Slave --
     input[31:0]                             AXI_WDATA,      
     input                                   AXI_WVALID,
-    input[3:0]                              AXI_WSTRB,
     output reg                                              AXI_WREADY,
 
     // "Send Write Response"                -- Master --    -- Slave --
