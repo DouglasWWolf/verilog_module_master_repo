@@ -51,7 +51,8 @@ module axi4_lite_master#
     input                                               AXI_AWREADY,
 
     // "Write Data"                     -- Master --    -- Slave --
-    output reg [DW-1:0]                 AXI_WDATA,      
+    output reg [DW-1:0]                 AXI_WDATA,
+    ouutput    [DW/8-1:0]               AXI_WSTRB,      
     output reg                          AXI_WVALID,
     input                                               AXI_WREADY,
 
@@ -74,6 +75,9 @@ module axi4_lite_master#
 
 );
   
+    // All bytes of a write are always valid
+    assign AXI_WSTRB = -1;
+
     // Define the handshakes for all 5 AXI channels
     wire B_HANDSHAKE  = AXI_BVALID  & AXI_BREADY;
     wire R_HANDSHAKE  = AXI_RVALID  & AXI_RREADY;

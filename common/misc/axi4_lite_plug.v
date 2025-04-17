@@ -29,6 +29,7 @@ module axi4_lite_plug # (parameter DW=32, parameter AW=32)
 
     // "Write Data"                     -- Master --    -- Slave --
     output reg[DW-1:0]                  M_AXI_WDATA,
+    output reg[DW/8-1:0]                M_AXI_WSTRB,
     output reg                          M_AXI_WVALID,
     input                                               M_AXI_WREADY,
 
@@ -54,6 +55,7 @@ always @(posedge clk) begin
     M_AXI_AWADDR  <= 0;
     M_AXI_AWVALID <= 0;
     M_AXI_WDATA   <= 0;
+    M_AXI_WSTRB   <= 0;
     M_AXI_WVALID  <= 0;
     M_AXI_BREADY  <= 0;
     M_AXI_ARADDR  <= 0;

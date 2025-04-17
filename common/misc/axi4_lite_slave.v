@@ -6,7 +6,6 @@
 //====================================================================================
 // 10-May-22  DWW     1  Initial creation
 // 03-May-24  DWW     2  Minor cleanup
-// 16-Apr-25  DWW     3  Removed the AXI_WSTRB port
 //====================================================================================
 
 
@@ -40,7 +39,8 @@ module axi4_lite_slave # (parameter ADDR_MASK = 8'hFF)
     output reg                                              AXI_AWREADY,
 
     // "Write Data"                         -- Master --    -- Slave --
-    input[31:0]                             AXI_WDATA,      
+    input[31:0]                             AXI_WDATA, 
+    input                                   AXI_WSTRB,     
     input                                   AXI_WVALID,
     output reg                                              AXI_WREADY,
 

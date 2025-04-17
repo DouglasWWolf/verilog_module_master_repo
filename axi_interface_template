@@ -8,7 +8,9 @@
 
     // "Write Data"                         -- Master --    -- Slave --
     input[31:0]                             S_AXI_WDATA,      
+    input[ 3:0]                             S_AXI_WSTRB,
     input                                   S_AXI_WVALID,
+
     output                                                  S_AXI_WREADY,
 
     // "Send Write Response"                -- Master --    -- Slave --
@@ -42,7 +44,8 @@
     input                                               M_AXI_AWREADY,
 
     // "Write Data"                     -- Master --    -- Slave --
-    output[31:0]                        M_AXI_WDATA,      
+    output[31:0]                        M_AXI_WDATA,
+    output[ 3:0]                        M_AXI_WSTRB,
     output                              M_AXI_WVALID,
     input                                               M_AXI_WREADY,
 
