@@ -40,7 +40,7 @@ module axi4_lite_slave # (parameter ADDR_MASK = 8'hFF)
 
     // "Write Data"                         -- Master --    -- Slave --
     input[31:0]                             AXI_WDATA, 
-    input                                   AXI_WSTRB,     
+    input[ 3:0]                             AXI_WSTRB,     
     input                                   AXI_WVALID,
     output reg                                              AXI_WREADY,
 
