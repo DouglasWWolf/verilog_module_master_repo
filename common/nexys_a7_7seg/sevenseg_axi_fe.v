@@ -10,11 +10,10 @@
 /*
     Register Offset  -- Meaning
     ----------------------------------------------------------------
-    0x00                Module version - read only
-    0x04                Display a single field -  32-bit value
-    0x08                Display two 16-bit fields - this is the right-side field
-    0x0C                Display two 16-bit fields - this is the left-side field
-    0x10                Format: Bit 0 : 0 = Single/right display is in hex
+    0x00                Display a single field -  32-bit value
+    0x04                Display two 16-bit fields - this is the right-side field
+    0x08                Display two 16-bit fields - this is the left-side field
+    0x0C                Format: Bit 0 : 0 = Single/right display is in hex
                                 Bit 0 : 1 = Single/right display is in decimal
                                 Bit 1 : 0 = Left display is in hex
                                 Bit 1 : 1 = Left display is in decimal
