@@ -32,5 +32,8 @@
  27-Mar-2025  1.11.0  DWW  Added labm_manager.v
 
  28-Mar-2025  1.12.0  DWW  ldp_manager now writes two distinct copies of the frame-counter
+
+ 04-Jun-2025  1.13.0  DWW  "axi_revision.v" now reports the git-hash
+
 ================================================================================================
 
