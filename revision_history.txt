@@ -35,5 +35,7 @@
 
  04-Jun-2025  1.13.0  DWW  "axi_revision.v" now reports the git-hash
 
+ 06-Jun-2025  1.14.0  DWW  "axi_revsion.v" now support timestamp
+
 ================================================================================================
 

@@ -9,6 +9,8 @@
 // 29-Apr-24  DWW     2  Added support for RTL_TYPE and RTL_SUBTYPE
 //
 // 04-Jun-25  DWW     3  Added support for reporting git-hash
+//
+// 05-Jun-25  DWW     4  Added support for reporting build-time
 //====================================================================================
 
 /*
@@ -23,6 +25,7 @@
        Offset 0x10 : Read-only = Build Date
        Offset 0x14 : Read-only = RTL type
        Offset 0x18 : Read-only = RTL subtype
+       Offset 0x1C : Read-only = Build Time
        Offset 0x40 : Read-only = Git-Hash word #0
        Offset 0x44 : Read-only = Git-Hash word #1
        Offset 0x48 : Read-only = Git-Hash word #2
@@ -84,6 +87,7 @@ module axi_revision
     localparam REG_DATE        = 4;
     localparam REG_RTL_TYPE    = 5;
     localparam REG_RTL_SUBTYPE = 6;
+    localparam REG_TIME        = 7;
     localparam REG_GIT_HASH_0  = 16;
     localparam REG_GIT_HASH_1  = 17;
     localparam REG_GIT_HASH_2  = 18;
@@ -225,7 +229,8 @@ module axi_revision
     //<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><
     `include "revision_history.vh"
     `include "git_hash.vh"
-    localparam VERSION_DATE  = (VERSION_MONTH << 24) | (VERSION_DAY << 16) | VERSION_YEAR; 
+    `include "timestamp.vh"
+    
 
     //=========================================================================================================
     // State machine that handles AXI master reads of our AXI4-Lite slave registers
@@ -248,7 +253,8 @@ module axi_revision
                 REG_MINOR:       s_axi_rdata <= VERSION_MINOR;
                 REG_BUILD:       s_axi_rdata <= VERSION_BUILD;
                 REG_RCAND:       s_axi_rdata <= VERSION_RCAND;
-                REG_DATE:        s_axi_rdata <= VERSION_DATE;
+                REG_DATE:        s_axi_rdata <= BUILD_DATE;
+                REG_TIME:        s_axi_rdata <= BUILD_TIME;
                 REG_RTL_TYPE:    s_axi_rdata <= RTL_TYPE;
                 REG_RTL_SUBTYPE: s_axi_rdata <= RTL_SUBTYPE;
                 REG_GIT_HASH_0:  s_axi_rdata <= GIT_HASH[4 * 32 +: 32];
