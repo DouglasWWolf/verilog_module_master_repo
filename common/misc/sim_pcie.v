@@ -1,4 +1,4 @@
-module sim_pcie # (parameter DW=512, parameter AW=64)
+module sim_pcie # (parameter DW=512, parameter AW=64, IW=4)
 (
     input   clk, resetn,
 
@@ -9,7 +9,7 @@ module sim_pcie # (parameter DW=512, parameter AW=64)
     input                                   S_AXI_AWVALID,
     input     [7:0]                         S_AXI_AWLEN,
     input     [2:0]                         S_AXI_AWSIZE,
-    input     [3:0]                         S_AXI_AWID,
+    input     [IW-1:0]                      S_AXI_AWID,
     input     [1:0]                         S_AXI_AWBURST,
     input                                   S_AXI_AWLOCK,
     input     [3:0]                         S_AXI_AWCACHE,
@@ -34,7 +34,7 @@ module sim_pcie # (parameter DW=512, parameter AW=64)
     input                                   S_AXI_ARVALID,
     input     [2:0]                         S_AXI_ARPROT,
     input                                   S_AXI_ARLOCK,
-    input     [3:0]                         S_AXI_ARID,
+    input     [IW-1:0]                      S_AXI_ARID,
     input     [7:0]                         S_AXI_ARLEN,
     input     [1:0]                         S_AXI_ARBURST,
     input     [3:0]                         S_AXI_ARCACHE,
