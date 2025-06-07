@@ -79,7 +79,7 @@ always @(posedge clk) begin
 end
 
 assign S_AXI_BVALID = (packets_rcvd != packets_ackd);
-
+assign S_AXI_BRESP  = 0;
 
 
 //=============================================================================
