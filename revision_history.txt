@@ -39,5 +39,8 @@
 
  06-Jun-2025  1.15.0  DWW  Added "sim_pcie.v"
 
+ 07-Jun-2025  1.16.0  DWW  Added BID/RID support to "sim_pcie.v" and to the         
+                           interface template.
+
 ================================================================================================
 

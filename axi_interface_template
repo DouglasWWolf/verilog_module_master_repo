@@ -94,6 +94,7 @@
 
     // "Send Write Response"                -- Master --    -- Slave --
     input[1:0]                                              M_AXI_BRESP,
+    input[IW-1:0]                                           M_AXI_BID,
     input                                                   M_AXI_BVALID,
     output                                  M_AXI_BREADY,
 
@@ -112,6 +113,7 @@
 
     // "Read data back to master"           -- Master --    -- Slave --
     input[DW-1:0]                                           M_AXI_RDATA,
+    input[IW-1:0]                                           M_AXI_RID,
     input                                                   M_AXI_RVALID,
     input[1:0]                                              M_AXI_RRESP,
     input                                                   M_AXI_RLAST,
@@ -145,6 +147,7 @@
 
     // "Send Write Response"                -- Master --    -- Slave --
     output[1:0]                                             S_AXI_BRESP,
+    output[IW-1:0]                                          S_AXI_BID,
     output                                                  S_AXI_BVALID,
     input                                   S_AXI_BREADY,
 
@@ -163,6 +166,7 @@
 
     // "Read data back to master"           -- Master --    -- Slave --
     output[DW-1:0]                                          S_AXI_RDATA,
+    output[IW-1:0]                                          S_AXI_RID,
     output                                                  S_AXI_RVALID,
     output[1:0]                                             S_AXI_RRESP,
     output                                                  S_AXI_RLAST,
