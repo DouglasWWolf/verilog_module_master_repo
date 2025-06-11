@@ -79,15 +79,52 @@ module axi_revision
     //==========================================================================
  );
 
-    // Register indices
+    /*
+        @register "major" portion of RTL revision "major.minor.build"
+    */
     localparam REG_MAJOR       = 0;
+
+    /*
+        @register "minor" portion of RTL revision "major.minor.build"
+    */
     localparam REG_MINOR       = 1;
+    
+    /*
+        @register "build" portion of RTL revision "major.minor.build"
+    */
     localparam REG_BUILD       = 2;
+
     localparam REG_RCAND       = 3;
+
+    /*
+        @register Build date
+        @field month  8 24 RO N/A Build month (1 thru 12)
+        @field day    8 16 RO N/A Build date  (1 thru 31)
+        @field year  16  0 RO N/A Build year  (4 digit year)
+    */
     localparam REG_DATE        = 4;
+
+    /*
+        @register Uniquely identifies this RTL design
+        @rname    REG_TYPE
+    */
     localparam REG_RTL_TYPE    = 5;
     localparam REG_RTL_SUBTYPE = 6;
+
+    /*
+        @register Build date
+        @field hour  8 16 RO N/A Build month (0 thru 23)
+        @field min   8  8 RO N/A Build date  (0 thru 59)
+        @field sec   8  0 RO N/A Build year  (0 thru 59)
+    */
     localparam REG_TIME        = 7;
+
+
+    /*
+        @register Git commit hash
+        @rsize    This is an array of five consecutive 32-bit registers
+        @rname    REG_GIT_HASH
+    */
     localparam REG_GIT_HASH_0  = 16;
     localparam REG_GIT_HASH_1  = 17;
     localparam REG_GIT_HASH_2  = 18;
