@@ -26,9 +26,12 @@
     <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     <> An RDMX header is:                                                           <>
     <>     An ordinary 42-byte ethernet/IP/UDP header                               <>
-    <>     A  2-byte magic number (0x0122)
+    <>     A  2-byte magic number (0x0122)                                          <>
     <>     A  8-byte target address                                                 <>
-    <>     12 bytes of reserved data, always 0                                      <>
+    <>     A  2-byte incrementing packet sequence number                            <>
+    <>     A  4-byte user-field                                                     <>
+    <>     A  1-byte "flags" field                                                  <>
+    <>     5 bytes of reserved data, always 0                                       <>
     <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
     The incoming AXIS_DATA data should be byte packed; only the last beat (the beat with
@@ -58,8 +61,8 @@ module rdmx_xmit_be #
     // Width of an AXI address in bits
     parameter AW = 64,
 
-    // Width of the "User field" in the RDMX header, in bits
-    parameter UW = 32,
+    // Width of the "User field" and "flags" in the RDMX header, in bits
+    parameter UW = 40,
 
     // Last octet of the source MAC address
     parameter[ 7:0] SRC_MAC = 2,    
@@ -118,9 +121,10 @@ module rdmx_xmit_be #
     //==========================================================================
     //           Target address input stream, synchronous to src_clk
     //==========================================================================
-    input  [(UW+AW)-1:0] AXIS_ADDR_TDATA,
-    input                AXIS_ADDR_TVALID,
-    output               AXIS_ADDR_TREADY,
+    input  [AW-1:0] AXIS_ADDR_TDATA,
+    input  [UW-1:0] AXIS_ADDR_TUSER,
+    input           AXIS_ADDR_TVALID,
+    output          AXIS_ADDR_TREADY,
     //==========================================================================
 
 
@@ -192,10 +196,13 @@ wire[15:0] payload_length = (fplout_tvalid & fplout_tready) ? fplout_tdata : fpl
 
 
 //============  This is the output of the target-address FIFO  =============
-reg [(UW+AW)-1:0] ftaout_tdata_latched;
-wire[(UW+AW)-1:0] ftaout_tdata;
-wire              ftaout_tvalid;
-reg               ftaout_tready;
+reg [AW-1:0] ftaout_tdata_latched;
+reg [UW-1:0] ftaout_tuser_latched;
+
+wire[AW-1:0] ftaout_tdata;
+wire[UW-1:0] ftaout_tuser;
+wire         ftaout_tvalid;
+reg          ftaout_tready;
 //==========================================================================
 
 
@@ -235,7 +242,7 @@ localparam[15:0] udp_checksum   = 0;
 localparam[15:0] rdmx_magic = 16'h0122;
 
 // 6 bytes of reserved area in the RDMX header
-localparam[6*8-1:0] rdmx_reserved = 0;
+localparam[5*8-1:0] rdmx_reserved = 0;
 
 // Compute both the IPv4 packet length and UDP packet length
 wire[15:0]       ip4_length     = IP_HDR_LEN + UDP_HDR_LEN + RDMX_HDR_LEN + payload_length;
@@ -258,16 +265,19 @@ wire[15:0] ip4_checksum = ~(ip4_cs32[15:0] + ip4_cs32[31:16]);
 
 // This is the target address of this outgoing packet
 wire[63:0] rdmx_target_addr = (ftaout_tready & ftaout_tvalid) ?
-                               ftaout_tdata[63:0] : ftaout_tdata_latched[63:0];
+                               ftaout_tdata : ftaout_tdata_latched;
 
 // This is the RDMX user field of the outgoing packet
 wire[31:0] rdmx_user_field  = (ftaout_tready & ftaout_tvalid) ?
-                               ftaout_tdata[95:64] : ftaout_tdata_latched[95:64];
+                               ftaout_tuser[31:00] : ftaout_tuser_latched[31:00];
 
+// This is the RDMX "flags" field of the outgoing packet
+wire[ 7:0] rdmx_flags       = (ftaout_tready & ftaout_tvalid) ?
+                               ftaout_tuser[39:32] : ftaout_tuser_latched[39:32];
 
 // This number increments by 1 on every packet
 reg[15:0] rdmx_seq_num;
-
+ 
 // This is the 64-byte packet header for an RDMX packet
 wire[DW-1:0] pkt_header =
 {
@@ -299,6 +309,7 @@ wire[DW-1:0] pkt_header =
     rdmx_target_addr,
     rdmx_seq_num,
     rdmx_user_field,
+    rdmx_flags,
     rdmx_reserved
 };
 
@@ -386,6 +397,7 @@ always @(posedge dst_clk) begin
                 // packet-length, or it could arrive earlier.
                 if (ftaout_tready & ftaout_tvalid) begin
                     ftaout_tdata_latched <= ftaout_tdata;
+                    ftaout_tuser_latched <= ftaout_tuser;
                     ftaout_tready        <= 0;                     
                 end
 
@@ -541,7 +553,8 @@ packet_length_fifo
 xpm_fifo_axis #
 (
    .FIFO_DEPTH      (MAX_PACKET_COUNT),   
-   .TDATA_WIDTH     (UW+AW),        
+   .TDATA_WIDTH     (AW),
+   .TUSER_WIDTH     (UW),        
    .FIFO_MEMORY_TYPE("auto"),       
    .PACKET_FIFO     ("false"),      
    .USE_ADV_FEATURES("0000"),        
@@ -557,11 +570,13 @@ rdmx_addr_fifo
 
     // The input of this FIFO comes from the AXIS_ADDR stream
    .s_axis_tdata (AXIS_ADDR_TDATA ),
+   .s_axis_tuser (AXIS_ADDR_TUSER ),
    .s_axis_tvalid(AXIS_ADDR_TVALID),
    .s_axis_tready(AXIS_ADDR_TREADY),
 
     // The output bus of the FIFO
    .m_axis_tdata (ftaout_tdata ),     
+   .m_axis_tuser (ftaout_tuser ),
    .m_axis_tvalid(ftaout_tvalid),       
    .m_axis_tready(ftaout_tready),     
 
@@ -569,7 +584,6 @@ rdmx_addr_fifo
    .s_axis_tdest(),
    .s_axis_tid  (),
    .s_axis_tstrb(),
-   .s_axis_tuser(),
    .s_axis_tkeep(),
    .s_axis_tlast(),
 
@@ -577,7 +591,6 @@ rdmx_addr_fifo
    .m_axis_tdest(),             
    .m_axis_tid  (),               
    .m_axis_tstrb(), 
-   .m_axis_tuser(),         
    .m_axis_tkeep(),           
    .m_axis_tlast(),         
 

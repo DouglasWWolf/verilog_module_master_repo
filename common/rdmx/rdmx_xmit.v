@@ -19,6 +19,9 @@
 //                       Now stamping frame-number into the packet header
 //
 // 26-Mar-24  DWW  1005  Added missing port S_AXI_ARSIZE
+//
+// 17-Jun-25  DWW  1006  RDMX user-field and flags are now carried in the TUSER/AWUSER
+//                       ports
 //====================================================================================
 
 /*
@@ -34,9 +37,12 @@
     <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     <> An RDMX header is:                                                           <>
     <>     An ordinary 42-byte ethernet/IP/UDP header                               <>
-    <>     A  2-byte magic number (0x0122)
+    <>     A  2-byte magic number (0x0122)                                          <>
     <>     A  8-byte target address                                                 <>
-    <>     12 bytes of reserved data, always 0                                      <>
+    <>     A  2-byte incrementing packet sequence number                            <>
+    <>     A  4-byte user-field                                                     <>
+    <>     A  1-byte "flags" field                                                  <>
+    <>     5 bytes of reserved data, always 0                                       <>
     <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
     The incoming S_AXI_WDATA data should be byte packed; only the last beat (the
@@ -52,8 +58,8 @@ module rdmx_xmit #
     // Width of an AXI address in bits
     parameter AW = 64,
 
-    // The AWUSER field is used to keep track of the frame number
-    parameter UW = 32,
+    // The AWUSER field is used to keep track of the RDMX user-field and flags
+    parameter UW = 40,
 
     // This can be either "common_clock" or "independent clock".   Use
     // "independent clock" if the two clock inputs are not being fed 
@@ -176,7 +182,8 @@ wire                  AXIS_PLEN_TVALID;
 wire                  AXIS_PLEN_TREADY;
 
 // Wires to connect the user-data/target-address stream
-wire [(UW+AW)-1:0]    AXIS_ADDR_TDATA;
+wire [AW-1:0]         AXIS_ADDR_TDATA;
+wire [UW-1:0]         AXIS_ADDR_TUSER;
 wire                  AXIS_ADDR_TVALID;
 wire                  AXIS_ADDR_TREADY;
 
@@ -239,6 +246,7 @@ front_end
     .AXIS_PLEN_TREADY   (AXIS_PLEN_TREADY),
     
     .AXIS_ADDR_TDATA    (AXIS_ADDR_TDATA ),
+    .AXIS_ADDR_TUSER    (AXIS_ADDR_TUSER ),
     .AXIS_ADDR_TVALID   (AXIS_ADDR_TVALID),
     .AXIS_ADDR_TREADY   (AXIS_ADDR_TREADY),
     
@@ -280,6 +288,7 @@ back_end
     .AXIS_PLEN_TREADY   (AXIS_PLEN_TREADY),
     
     .AXIS_ADDR_TDATA    (AXIS_ADDR_TDATA ),
+    .AXIS_ADDR_TUSER    (AXIS_ADDR_TUSER ),
     .AXIS_ADDR_TVALID   (AXIS_ADDR_TVALID),
     .AXIS_ADDR_TREADY   (AXIS_ADDR_TREADY),
     

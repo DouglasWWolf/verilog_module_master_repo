@@ -8,6 +8,8 @@
 //
 // 05-Nov-24  DWW     2  Added support for 32-bits of "user" data in AWUSER
 //                       Removed obsolete signal "addr_fifo_debug"
+//
+// 26-Mar-25  DWW     3  Added missing port S_AXI_ARSIZE
 //====================================================================================
 
 /*
@@ -72,6 +74,7 @@ module rdmx_xmit_fe #
     input                                   S_AXI_ARLOCK,
     input[3:0]                              S_AXI_ARID,
     input[7:0]                              S_AXI_ARLEN,
+    input[2:0]                              S_AXI_ARSIZE,
     input[1:0]                              S_AXI_ARBURST,
     input[3:0]                              S_AXI_ARCACHE,
     input[3:0]                              S_AXI_ARQOS,
@@ -85,21 +88,22 @@ module rdmx_xmit_fe #
     input                                   S_AXI_RREADY,
     //==========================================================================
 
+    //==========================================================================
+    //                   Packet-length output stream
+    //==========================================================================
+    output [15:0]   AXIS_PLEN_TDATA,
+    output          AXIS_PLEN_TVALID,
+    input           AXIS_PLEN_TREADY,
+    //==========================================================================
+
 
     //==========================================================================
-    //                  Packet-length/user-data output stream
+    //                  Target address / user-data output stream
     //==========================================================================
-    output [15:0]           AXIS_PLEN_TDATA,
-    output                  AXIS_PLEN_TVALID,
-    input                   AXIS_PLEN_TREADY,
-    //==========================================================================
-
-    //==========================================================================
-    //                  Target address output stream
-    //==========================================================================
-    output [(UW + AW)-1:0] AXIS_ADDR_TDATA,
-    output                 AXIS_ADDR_TVALID,
-    input                  AXIS_ADDR_TREADY,
+    output [AW-1:0] AXIS_ADDR_TDATA,
+    output [UW-1:0] AXIS_ADDR_TUSER,
+    output          AXIS_ADDR_TVALID,
+    input           AXIS_ADDR_TREADY,
     //==========================================================================
 
 
@@ -153,7 +157,8 @@ end
 
 // Output stream "target address" is driven directly from the AW-channel
 // We only accept data when both the data and address FIFOs are ready to receive
-assign AXIS_ADDR_TDATA  = {S_AXI_AWUSER, S_AXI_AWADDR};
+assign AXIS_ADDR_TDATA  = S_AXI_AWADDR;
+assign AXIS_ADDR_TUSER  = S_AXI_AWUSER;
 assign AXIS_ADDR_TVALID = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & S_AXI_AWVALID;
 assign S_AXI_AWREADY    = AXIS_DATA_TREADY & AXIS_ADDR_TREADY & (resetn == 1);
 

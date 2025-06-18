@@ -45,5 +45,7 @@
  10-Jun-2025  1.17.0  DWW  Added xlate_vreg comments to the register definitions in    
                            file axi_revision.v
 
+ 18-Jun-2025  1.18.0  DWW  Updated rdmx modules to support new memory fence bit.
+                           Added new module "axi4_memfence.v" to common/misc
 ================================================================================================
 
