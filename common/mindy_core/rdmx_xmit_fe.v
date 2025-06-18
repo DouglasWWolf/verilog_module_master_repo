@@ -32,7 +32,7 @@ module rdmx_xmit_fe #
     parameter AW = 64,
 
     // The width of the additional user-data
-    parameter UW = 32
+    parameter UW = 40
 
 ) 
 (

@@ -65,7 +65,7 @@ module rdmx_shim #
 
     // "Specify write address"              -- Master --    -- Slave --
     output reg [63:0]                        M_AXI_AWADDR,
-    output     [31:0]                        M_AXI_AWUSER,
+    output reg [39:0]                        M_AXI_AWUSER,
     output reg [7:0]                         M_AXI_AWLEN,
     output     [2:0]                         M_AXI_AWSIZE,
     output     [3:0]                         M_AXI_AWID,
@@ -146,8 +146,7 @@ localparam FSM_OUTPUT_FC   = 5;
 reg[DATA_WBITS-1:0] metadata[0:1];
 
 // The AWUSER field will always contain our frame-counter
-assign M_AXI_AWUSER = FRAME_COUNT + 1;
-
+wire[31:0] fc_plus_one = (FRAME_COUNT + 1);
 
 // Create a byte-swapped version of the data on the input stream
 //wire[DATA_WBITS-1:0] AXIS_FD_tdata_swapped;
@@ -367,6 +366,20 @@ always @* begin
 end
 //-----------------------------------------------------------------------------
 
+
+//-----------------------------------------------------------------------------
+// Drive M_AXI_AWUSER - AWUSER contains the frame-counter and a memfence flag
+//
+// We always request the receiving agent to perform a memfence operation prior
+// to writing the frame-counter to RAM
+//-----------------------------------------------------------------------------
+always @* begin
+    case (output_mode)
+        OM_FC   :   M_AXI_AWUSER = {8'b1, fc_plus_one};
+        default :   M_AXI_AWUSER = {8'b0, fc_plus_one};
+    endcase
+end
+//-----------------------------------------------------------------------------
 
 
 //<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

@@ -47,5 +47,7 @@
 
  18-Jun-2025  1.18.0  DWW  Updated rdmx modules to support new memory fence bit.
                            Added new module "axi4_memfence.v" to common/misc
+
+ 18-Jun-2025  1.19.0  DWW  Updated mindy_core to support new RDMX memory fencing
 ================================================================================================
 
