@@ -49,5 +49,7 @@
                            Added new module "axi4_memfence.v" to common/misc
 
  18-Jun-2025  1.19.0  DWW  Updated mindy_core to support new RDMX memory fencing
+
+ 22-Jul-2025  1.20.0  DWW  Minor enhancements to axi4_lite_master.v
 ================================================================================================
 
