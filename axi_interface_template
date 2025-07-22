@@ -2,15 +2,14 @@
         
     // "Specify write address"              -- Master --    -- Slave --
     input[AW-1:0]                           S_AXI_AWADDR,   
+    input[   2:0]                           S_AXI_AWPROT,
     input                                   S_AXI_AWVALID,  
     output                                                  S_AXI_AWREADY,
-    input[2:0]                              S_AXI_AWPROT,
 
     // "Write Data"                         -- Master --    -- Slave --
     input[31:0]                             S_AXI_WDATA,      
     input[ 3:0]                             S_AXI_WSTRB,
     input                                   S_AXI_WVALID,
-
     output                                                  S_AXI_WREADY,
 
     // "Send Write Response"                -- Master --    -- Slave --
@@ -20,8 +19,8 @@
 
     // "Specify read address"               -- Master --    -- Slave --
     input[AW-1:0]                           S_AXI_ARADDR,     
+    input[   2:0]                           S_AXI_ARPROT,     
     input                                   S_AXI_ARVALID,
-    input[2:0]                              S_AXI_ARPROT,     
     output                                                  S_AXI_ARREADY,
 
     // "Read data back to master"           -- Master --    -- Slave --

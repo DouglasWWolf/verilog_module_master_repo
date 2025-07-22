@@ -1,47 +1,182 @@
+`timescale 1ns / 1ps
 //====================================================================================
 //                        ------->  Revision History  <------
 //====================================================================================
 //
-//   Date     Who   Ver  Changes
+//   Date     Who   Ver  Changess
 //====================================================================================
-// 10-May-22  DWW     1  Initial creation
-// 03-May-24  DWW     2  Minor cleanup
+// 10-May-22  DWW  1000  Initial creation
+// 22-Jul-25  DWW  1001  Added the missing AxPROT signals and some comments
+//                       Module parameter is now AW instead of ADDR_MASK !!
 //====================================================================================
 
 
-module axi4_lite_slave # (parameter ADDR_MASK = 8'hFF)
+/*
+        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        >>>> This is the AXI4 interface you should place in your module <<<<
+        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+    //================== This is an AXI4-Lite slave interface ==================
+        
+    // "Specify write address"              -- Master --    -- Slave --
+    input[AW-1:0]                           S_AXI_AWADDR,   
+    input                                   S_AXI_AWVALID,  
+    input[   2:0]                           S_AXI_AWPROT,
+    output                                                  S_AXI_AWREADY,
+
+
+    // "Write Data"                         -- Master --    -- Slave --
+    input[31:0]                             S_AXI_WDATA,      
+    input                                   S_AXI_WVALID,
+    input[ 3:0]                             S_AXI_WSTRB,
+    output                                                  S_AXI_WREADY,
+
+    // "Send Write Response"                -- Master --    -- Slave --
+    output[1:0]                                             S_AXI_BRESP,
+    output                                                  S_AXI_BVALID,
+    input                                   S_AXI_BREADY,
+
+    // "Specify read address"               -- Master --    -- Slave --
+    input[AW-1:0]                           S_AXI_ARADDR,     
+    input[   2:0]                           S_AXI_ARPROT,     
+    input                                   S_AXI_ARVALID,
+    output                                                  S_AXI_ARREADY,
+
+    // "Read data back to master"           -- Master --    -- Slave --
+    output[31:0]                                            S_AXI_RDATA,
+    output                                                  S_AXI_RVALID,
+    output[ 1:0]                                            S_AXI_RRESP,
+    input                                   S_AXI_RREADY
+    //==========================================================================
+
+
+
+        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        >>>>             Declare these signals in your module           <<<<
+        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+    //==========================================================================
+    // We'll communicate with the AXI4-Lite Slave core with these signals.
+    //==========================================================================
+    // AXI Slave Handler Interface for write requests
+    wire[  31:0]  ashi_windx;     // Input   Write register-index
+    wire[AW-1:0]  ashi_waddr;     // Input:  Write-address
+    wire[  31:0]  ashi_wdata;     // Input:  Write-data
+    wire          ashi_write;     // Input:  1 = Handle a write request
+    reg [   1:0]  ashi_wresp;     // Output: Write-response (OKAY, DECERR, SLVERR)
+    wire          ashi_widle;     // Output: 1 = Write state machine is idle
+
+    // AXI Slave Handler Interface for read requests
+    wire[  31:0]  ashi_rindx;     // Input   Read register-index
+    wire[AW-1:0]  ashi_raddr;     // Input:  Read-address
+    wire          ashi_read;      // Input:  1 = Handle a read request
+    reg [  31:0]  ashi_rdata;     // Output: Read data
+    reg [   1:0]  ashi_rresp;     // Output: Read-response (OKAY, DECERR, SLVERR);
+    wire          ashi_ridle;     // Output: 1 = Read state machine is idle
+    //==========================================================================
+
+
+
+        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        >>>>    This is how you instantiate the module in your code     <<<<
+        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+
+    //==========================================================================
+    // This connects us to an AXI4-Lite slave core
+    //==========================================================================
+    axi4_lite_slave#(.AW(AW)) i_axi4lite_slave
+    (
+        .clk            (clk),
+        .resetn         (resetn),
+
+        // AXI AW channel
+        .AXI_AWADDR     (S_AXI_AWADDR),
+        .AXI_AWPROT     (S_AXI_AWPROT),
+        .AXI_AWVALID    (S_AXI_AWVALID),   
+        .AXI_AWREADY    (S_AXI_AWREADY),
+
+        // AXI W channel
+        .AXI_WDATA      (S_AXI_WDATA),
+        .AXI_WVALID     (S_AXI_WVALID),
+        .AXI_WSTRB      (S_AXI_WSTRB),
+        .AXI_WREADY     (S_AXI_WREADY),
+
+        // AXI B channel
+        .AXI_BRESP      (S_AXI_BRESP),
+        .AXI_BVALID     (S_AXI_BVALID),
+        .AXI_BREADY     (S_AXI_BREADY),
+
+        // AXI AR channel
+        .AXI_ARADDR     (S_AXI_ARADDR), 
+        .AXI_ARPROT     (S_AXI_ARPROT),
+        .AXI_ARVALID    (S_AXI_ARVALID),
+        .AXI_ARREADY    (S_AXI_ARREADY),
+
+        // AXI R channel
+        .AXI_RDATA      (S_AXI_RDATA),
+        .AXI_RVALID     (S_AXI_RVALID),
+        .AXI_RRESP      (S_AXI_RRESP),
+        .AXI_RREADY     (S_AXI_RREADY),
+
+        // ASHI write-request registers
+        .ASHI_WADDR     (ashi_waddr),
+        .ASHI_WINDX     (ashi_windx),
+        .ASHI_WDATA     (ashi_wdata),
+        .ASHI_WRITE     (ashi_write),
+        .ASHI_WRESP     (ashi_wresp),
+        .ASHI_WIDLE     (ashi_widle),
+
+        // ASHI read registers
+        .ASHI_RADDR     (ashi_raddr),
+        .ASHI_RINDX     (ashi_rindx),
+        .ASHI_RDATA     (ashi_rdata),
+        .ASHI_READ      (ashi_read ),
+        .ASHI_RRESP     (ashi_rresp),
+        .ASHI_RIDLE     (ashi_ridle)
+    );
+    //==========================================================================
+
+
+*/
+
+module axi4_lite_slave # (parameter AW = 8)
 (
     input clk, resetn,
 
     //======================  AXI Slave Handler Interface  =====================
 
     // ASHI signals for handling AXI write requests
-    output[31:0]    ASHI_WADDR,
-    output[31:0]    ASHI_WINDX,
-    output[31:0]    ASHI_WDATA,
+    output[AW-1:0]  ASHI_WADDR,
+    output[  31:0]  ASHI_WINDX,
+    output[  31:0]  ASHI_WDATA,
     output          ASHI_WRITE,
     input           ASHI_WIDLE,
-    input[1:0]      ASHI_WRESP,
+    input [   1:0]  ASHI_WRESP,
 
     // ASHI signals for handling AXI read requests
-    output[31:0]    ASHI_RADDR,
-    output[31:0]    ASHI_RINDX,
+    output[AW-1:0]  ASHI_RADDR,
+    output[  31:0]  ASHI_RINDX,
     output          ASHI_READ,
     input           ASHI_RIDLE,
-    input[31:0]     ASHI_RDATA,
-    input[1:0]      ASHI_RRESP,
+    input [  31:0]  ASHI_RDATA,
+    input [   1:0]  ASHI_RRESP,
 
     //================ From here down is the AXI4-Lite interface ===============
         
     // "Specify write address"              -- Master --    -- Slave --
-    input[31:0]                             AXI_AWADDR,   
+    input[AW-1:0]                           AXI_AWADDR,   
+    input[   2:0]                           AXI_AWPROT,
     input                                   AXI_AWVALID,  
     output reg                                              AXI_AWREADY,
 
     // "Write Data"                         -- Master --    -- Slave --
-    input[31:0]                             AXI_WDATA, 
-    input[ 3:0]                             AXI_WSTRB,     
+    input[31:0]                             AXI_WDATA,      
     input                                   AXI_WVALID,
+    input[3:0]                              AXI_WSTRB,
     output reg                                              AXI_WREADY,
 
     // "Send Write Response"                -- Master --    -- Slave --
@@ -50,14 +185,15 @@ module axi4_lite_slave # (parameter ADDR_MASK = 8'hFF)
     input                                   AXI_BREADY,
 
     // "Specify read address"               -- Master --    -- Slave --
-    input[31:0]                             AXI_ARADDR,     
+    input[AW-1:0]                           AXI_ARADDR,     
+    input[   2:0]                           AXI_ARPROT,
     input                                   AXI_ARVALID,
     output reg                                              AXI_ARREADY,
 
     // "Read data back to master"           -- Master --    -- Slave --
     output[31:0]                                            AXI_RDATA,
+    output[ 1:0]                                            AXI_RRESP,
     output reg                                              AXI_RVALID,
-    output[1:0]                                             AXI_RRESP,
     input                                   AXI_RREADY
     //==========================================================================
  );
@@ -90,10 +226,10 @@ module axi4_lite_slave # (parameter ADDR_MASK = 8'hFF)
     assign AXI_RDATA = (resetn == 0) ? 32'hDEAD_BEEF : ASHI_RDATA;
 
     // The register index for writes is determined by the register address
-    assign ASHI_WINDX = (ASHI_WADDR & ADDR_MASK) >> 2;
+    assign ASHI_WINDX = ASHI_WADDR >> 2;
 
     // The register index for reads is determined by the register address
-    assign ASHI_RINDX = (ASHI_RADDR & ADDR_MASK) >> 2;
+    assign ASHI_RINDX = ASHI_RADDR >> 2;
 
     //=========================================================================================================
     // FSM logic for handling AXI read transactions
