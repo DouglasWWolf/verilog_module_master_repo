@@ -54,5 +54,7 @@
                            Minor enhancements to axi4_lite_slave.v
 
  22-Apr-2026  1.21.0  DWW  Fixed spurious write-addresses in axi4_lite_slave.v
+ 
+ 14-Jun-2026  1.22.0  DWW  Added ldp_manager_v2 
 ================================================================================================
 
