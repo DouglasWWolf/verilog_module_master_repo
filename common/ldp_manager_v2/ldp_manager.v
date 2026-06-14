@@ -38,7 +38,7 @@
 
 */
 
-module ldp_manager # (parameter DW=512, AW=64)
+module ldp_manager # (parameter DW=512, AW=64, FRAME_DROP_ERR_BIT = 64)
 (
     input   clk, resetn,
 
@@ -126,10 +126,6 @@ module ldp_manager # (parameter DW=512, AW=64)
     //==========================================================================
 
 );
-
-// This is the bit number within the 64-bytes of meta-data that is used to 
-// report a frame that needs to be dropped
-localparam FRAME_DROP_ERR_BIT = 511;
 
 // Each burst of frame-data we write has this many bytes
 localparam BYTES_PER_FD_BURST = 4096;
