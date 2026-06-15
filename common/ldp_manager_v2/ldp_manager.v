@@ -38,7 +38,7 @@
 
 */
 
-module ldp_manager # (parameter DW=512, AW=64, FRAME_DROP_ERR_BIT = 64)
+module ldp_manager # (parameter DW=512, AW=64)
 (
     input   clk, resetn,
 
@@ -126,6 +126,10 @@ module ldp_manager # (parameter DW=512, AW=64, FRAME_DROP_ERR_BIT = 64)
     //==========================================================================
 
 );
+
+// In the 2nd data-cycle of metadata, this is the bit number where we report
+// the status flag that says "this frame is damaged and should be dropped"
+localparam FRAME_DROP_ERR_BIT = 64;
 
 // Each burst of frame-data we write has this many bytes
 localparam BYTES_PER_FD_BURST = 4096;
@@ -593,7 +597,7 @@ always @* begin
         WSM_WRITE_MD00:
             begin
                 axis_fd_tready = 0;
-                M_AXI_WDATA    = metadata[0] | (axis_ferr_tdata[0] << FRAME_DROP_ERR_BIT);
+                M_AXI_WDATA    = metadata[0];
                 M_AXI_WSTRB    = -1;
                 M_AXI_WLAST    = 0;
                 M_AXI_WVALID   = 1;
@@ -603,7 +607,7 @@ always @* begin
         WSM_WRITE_MD01:
             begin
                 axis_fd_tready = 0;
-                M_AXI_WDATA    = metadata[1];
+                M_AXI_WDATA    = metadata[1] | (axis_ferr_tdata[0] << FRAME_DROP_ERR_BIT);
                 M_AXI_WSTRB    = -1;
                 M_AXI_WLAST    = 1;
                 M_AXI_WVALID   = 1;
@@ -613,7 +617,7 @@ always @* begin
         WSM_WRITE_MD10:
             begin
                 axis_fd_tready = 0;
-                M_AXI_WDATA    = metadata[0] | (axis_ferr_tdata[0] << FRAME_DROP_ERR_BIT);
+                M_AXI_WDATA    = metadata[0];
                 M_AXI_WSTRB    = -1;
                 M_AXI_WLAST    = 0;
                 M_AXI_WVALID   = 1;
@@ -623,7 +627,7 @@ always @* begin
         WSM_WRITE_MD11:
             begin
                 axis_fd_tready = 0;
-                M_AXI_WDATA    = metadata[1];
+                M_AXI_WDATA    = metadata[1] | (axis_ferr_tdata[0] << FRAME_DROP_ERR_BIT);
                 M_AXI_WSTRB    = -1;
                 M_AXI_WLAST    = 1;
                 M_AXI_WVALID   = 1;

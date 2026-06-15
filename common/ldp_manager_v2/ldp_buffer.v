@@ -136,9 +136,6 @@ reg frame_status_stb;
 // The frame-status FIFO drives this signal
 wire frame_status_in_ready;
 
-// The state of the input state-machine
-reg ism_state;
-
 // When this is true, we're discarding input data
 assign discard_input = !fd_fifo_in_tready || abort_frame_input;
 
@@ -168,48 +165,36 @@ always @(posedge clk) begin
     frame_status_stb    <= 0;
 
     if (resetn == 0) begin
-        ism_state <= 0;
+        abort_frame_input    <= 0;
+        dropped_frame_number <= 0;
+        frame_cycles_in      <= 0;
+        inp_frame_number     <= 1;
     end 
 
-    else case(ism_state)
-        
-        // After coming out of reset, we wait for the data_fifo
-        // to become ready to accept data
-        0:  if (fd_fifo_in_tready) begin
-                abort_frame_input    <= 0;
-                dropped_frame_number <= 0;
-                frame_cycles_in      <= 0;
-                inp_frame_number     <= 1;
-                ism_state            <= 1;
-            end
+    // On every cycle if incoming data...
+    else if (axis_fd_in_tvalid) begin
 
-
-        // Every time a data-cycle arrives on the input stream...
-        1:  if (axis_fd_in_tvalid) begin
-
-                // If this is the first cycle of the frame to be dropped
-                // because the FIFO is full, abort the frame and write
-                // an entry in the "drop_fifo"    
-                if (!fd_fifo_in_tready && !abort_frame_input) begin
-                    abort_frame_input   <= 1;
-                    drop_fifo_in_tvalid <= 1;
-                end
+        // If this is the first cycle of the frame to be dropped
+        // because the FIFO is full, abort the frame and write
+        // an entry into the "drop_fifo"    
+        if (!fd_fifo_in_tready && !abort_frame_input) begin
+            abort_frame_input   <= 1;
+            drop_fifo_in_tvalid <= 1;
+        end
          
-                if (frame_cycles_in < LAST_FRAME_CYCLE)
-                    frame_cycles_in <= frame_cycles_in + 1;
-                else begin
-                    abort_frame_input    <= 0;
-                    frame_cycles_in      <= 0;
-                    dropped_frame_number <= inp_frame_number;
-                    dropped_frame_stb    <= discard_input;
-                    frame_status         <= discard_input;
-                    frame_status_stb     <= 1;
-                    inp_frame_number     <= inp_frame_number + 1;
-                end
+        if (frame_cycles_in < LAST_FRAME_CYCLE)
+            frame_cycles_in <= frame_cycles_in + 1;
+        else begin
+            abort_frame_input    <= 0;
+            frame_cycles_in      <= 0;
+            dropped_frame_number <= inp_frame_number;
+            dropped_frame_stb    <= discard_input;
+            frame_status         <= discard_input;
+            frame_status_stb     <= 1;
+            inp_frame_number     <= inp_frame_number + 1;
+        end
 
-            end
-    endcase
-
+    end
 end
 //=============================================================================
 
