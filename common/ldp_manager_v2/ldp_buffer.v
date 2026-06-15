@@ -162,14 +162,13 @@ assign fatal_overflow_stb = (frame_status_stb    && !frame_status_in_ready)
 //=============================================================================
 always @(posedge clk) begin
 
-    // These strobes high for a single cycle at a time
+    // These strobe high for a single cycle at a time
     dropped_frame_stb   <= 0;
     drop_fifo_in_tvalid <= 0;
     frame_status_stb    <= 0;
 
     if (resetn == 0) begin
-        dropped_frame_number <= 0;
-        ism_state            <= 0;
+        ism_state <= 0;
     end 
 
     else case(ism_state)
@@ -177,10 +176,11 @@ always @(posedge clk) begin
         // After coming out of reset, we wait for the data_fifo
         // to become ready to accept data
         0:  if (fd_fifo_in_tready) begin
-                abort_frame_input <= 0;
-                frame_cycles_in   <= 0;
-                inp_frame_number  <= 1;
-                ism_state         <= 1;
+                abort_frame_input    <= 0;
+                dropped_frame_number <= 0;
+                frame_cycles_in      <= 0;
+                inp_frame_number     <= 1;
+                ism_state            <= 1;
             end
 
 
