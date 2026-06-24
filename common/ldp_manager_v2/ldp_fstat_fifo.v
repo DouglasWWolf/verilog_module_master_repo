@@ -5,6 +5,9 @@
 //   Date     Who   Ver  Changes
 //====================================================================================
 // 12-Jun-26  DWW     1  Initial creation
+//
+// 23-Jun-26  DWW     2  Fixed a bug in the reset logic that cause "occupancy"
+//                       to not be reset properly
 //====================================================================================
 
 /*
@@ -61,19 +64,23 @@ always @(posedge clk) begin
         occupancy <= 0;
     end
 
-    // Handle an incoming handshake
-    if (hsk_in) begin
-        fifo[in_idx] <= data_in;
-        in_idx       <= (in_idx == DEPTH-1) ? 0 : in_idx + 1;
-    end
+    else begin
 
-    // Handle an outgoing handshake
-    if (hsk_out) begin
-        out_idx <= (out_idx == DEPTH-1) ? 0 : out_idx + 1;
-    end
+        // Handle an incoming handshake
+        if (hsk_in) begin
+            fifo[in_idx] <= data_in;
+            in_idx       <= (in_idx == DEPTH-1) ? 0 : in_idx + 1;
+        end
 
-    // Keep track of how many items are in the FIFO
-    occupancy <= occupancy + hsk_in - hsk_out;
+        // Handle an outgoing handshake
+        if (hsk_out) begin
+            out_idx <= (out_idx == DEPTH-1) ? 0 : out_idx + 1;
+        end
+
+        // Keep track of how many items are in the FIFO
+        occupancy <= occupancy + hsk_in - hsk_out;
+        
+    end
 end
 //=============================================================================
 
