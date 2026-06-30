@@ -27,7 +27,9 @@
 module ldp_buffer #
 (
     parameter DW=512,
-    parameter DATA_FIFO_DEPTH = 16,
+    parameter DATA_FIFO_DEPTH = 32768,
+    parameter DATA_FIFO_SECTIONS = 4,
+    parameter DATA_FIFO_RAM_TYPE = "block",
     parameter SUPPORT_FIFO_DEPTH = 16
 )
 (
@@ -278,66 +280,38 @@ end
 // on the output stream while the frame-data FIFO is presenting data
 assign fd_fifo_out_tready = fd_fifo_active & axis_fd_out_tready;
 
+
 //=============================================================================
 // This holds our buffered frame data.  TUSER is the bottom 8 bits of the
 // frame number
 //=============================================================================
-xpm_fifo_axis #
+ldp_fifo #
 (
-   .TDATA_WIDTH     (DW),
-   .TUSER_WIDTH     (8),
-   .FIFO_DEPTH      (DATA_FIFO_DEPTH),
-   .FIFO_MEMORY_TYPE("auto"),
-   .PACKET_FIFO     ("false"),
-   .USE_ADV_FEATURES("0000"),
-   .CLOCKING_MODE   ("common_clock")
+    .TDATA_WIDTH     (DW),
+    .TUSER_WIDTH     (8),
+    .FIFO_DEPTH      (DATA_FIFO_DEPTH),
+    .FIFO_MEMORY_TYPE(DATA_FIFO_RAM_TYPE),
+    .SECTIONS        (DATA_FIFO_SECTIONS)
 )
 i_fd_fifo
 (
-    // Clock and reset
-   .s_aclk   (clk   ),
-   .m_aclk   (clk   ),
-   .s_aresetn(resetn),
+    .clk            (clk),
+    .resetn         (resetn),
 
-    // The input bus of the FIFO
-   .s_axis_tdata (axis_fd_in_tdata),
-   .s_axis_tvalid(fd_fifo_in_tvalid),
-   .s_axis_tuser (fd_fifo_in_tuser ),
-   .s_axis_tready(fd_fifo_in_tready),
+    // The input bus to the FIFO
+    .axis_in_tdata  (axis_fd_in_tdata),
+    .axis_in_tvalid (fd_fifo_in_tvalid),
+    .axis_in_tuser  (fd_fifo_in_tuser ),
+    .axis_in_tready (fd_fifo_in_tready),
 
     // The output bus of the FIFO
-   .m_axis_tdata (fd_fifo_out_tdata ),
-   .m_axis_tuser (fd_fifo_out_tuser ),
-   .m_axis_tvalid(fd_fifo_out_tvalid),
-   .m_axis_tready(fd_fifo_out_tready),
-
-    // Unused input stream signals
-   .s_axis_tkeep(),
-   .s_axis_tlast(),
-   .s_axis_tdest(),
-   .s_axis_tid  (),
-   .s_axis_tstrb(),
-
-    // Unused output stream signals
-   .m_axis_tdest(),
-   .m_axis_tid  (),
-   .m_axis_tstrb(),
-   .m_axis_tkeep(),
-   .m_axis_tlast(),
-
-    // Other unused signals
-   .almost_empty_axis(),
-   .almost_full_axis(),
-   .dbiterr_axis(),
-   .prog_empty_axis(),
-   .prog_full_axis(),
-   .rd_data_count_axis(),
-   .sbiterr_axis(),
-   .wr_data_count_axis(),
-   .injectdbiterr_axis(),
-   .injectsbiterr_axis()
+    .axis_out_tdata (fd_fifo_out_tdata ),
+    .axis_out_tuser (fd_fifo_out_tuser ),
+    .axis_out_tvalid(fd_fifo_out_tvalid),
+    .axis_out_tready(fd_fifo_out_tready)
 );
 //=============================================================================
+
 
 
 
