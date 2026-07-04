@@ -11,6 +11,8 @@
 // 04-Jun-25  DWW     3  Added support for reporting git-hash
 //
 // 05-Jun-25  DWW     4  Added support for reporting build-time
+//
+// 04-Jul-26  DWW     5  Fixed documentation of the TIME register
 //====================================================================================
 
 /*
@@ -113,9 +115,9 @@ module axi_revision
 
     /*
         @register Build date
-        @field hour  8 16 RO N/A Build month (0 thru 23)
-        @field min   8  8 RO N/A Build date  (0 thru 59)
-        @field sec   8  0 RO N/A Build year  (0 thru 59)
+        @field hour  8 16 RO N/A Build hour   (0 thru 23)
+        @field min   8  8 RO N/A Build minute (0 thru 59)
+        @field sec   8  0 RO N/A Build second (0 thru 59)
     */
     localparam REG_TIME        = 7;
 
