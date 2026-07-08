@@ -63,5 +63,8 @@
                            changed to the default FIFO size to 32678 (i.e, 2MB)
 
  04-Jul-2026  1.25.0  DWW  Fixed documentation in axi_revision.v
+
+ 08-Jul-2026  1.26.0  DWW  Added "axis_slice.v", "cmac_rx_cdc.v" and "cmac_tx_cdc.v"
+
 ================================================================================================
 
