@@ -10,7 +10,7 @@
 /*
     This performs the CDC for a TX stream to a CMAC:
 
-    Input -> register slice --> CDC FIFO --> Packet FIFO --> Output
+    Input -> Slice --> CDC FIFO --> Packet FIFO --> Slice --> Output
 */
 
 
@@ -47,18 +47,11 @@ localparam DB = DW/8;
 wire cmac_resetn;
 
 // Wires between modules
-wire [DW-1:0] slice_tdata , cdc_tdata , packet_tdata ;
-wire [DB-1:0] slice_tkeep , cdc_tkeep , packet_tkeep ;
-wire          slice_tlast , cdc_tlast , packet_tlast ;
-wire          slice_tvalid, cdc_tvalid, packet_tvalid;
-wire          slice_tready, cdc_tready, packet_tready;
-
-// Connect the output of the Packet FIFO to the output bus
-assign m_axis_tdata  = packet_tdata ;
-assign m_axis_tkeep  = HAS_TKEEP ? packet_tkeep : -1;
-assign m_axis_tlast  = packet_tlast ;
-assign m_axis_tvalid = packet_tvalid;
-assign packet_tready = m_axis_tready;
+wire [DW-1:0] slice0_tdata , cdc_tdata , packet_tdata ;
+wire [DB-1:0] slice0_tkeep , cdc_tkeep , packet_tkeep ;
+wire          slice0_tlast , cdc_tlast , packet_tlast ;
+wire          slice0_tvalid, cdc_tvalid, packet_tvalid;
+wire          slice0_tready, cdc_tready, packet_tready;
 
 
 //=============================================================================
@@ -71,7 +64,7 @@ axis_slice #
     .USER_ENABLE    (0),
     .USER_WIDTH     (1)
 )
-rx_slice
+tx_slice_0
 (
     .clk          (sys_clk),
     .rst          (~resetn),
@@ -85,16 +78,19 @@ rx_slice
     .s_axis_tid   (0),
     .s_axis_tdest (0),
 
-    .m_axis_tdata (slice_tdata ),
-    .m_axis_tkeep (slice_tkeep ),
-    .m_axis_tlast (slice_tlast ),
-    .m_axis_tvalid(slice_tvalid),
-    .m_axis_tready(slice_tready),
+    .m_axis_tdata (slice0_tdata ),
+    .m_axis_tkeep (slice0_tkeep ),
+    .m_axis_tlast (slice0_tlast ),
+    .m_axis_tvalid(slice0_tvalid),
+    .m_axis_tready(slice0_tready),
     .m_axis_tuser (0),
     .m_axis_tid   (0),
     .m_axis_tdest (0)
 );
 //=============================================================================
+
+
+
 
 
 
@@ -118,11 +114,11 @@ i_cdc_fifo
     .s_aresetn(resetn  ),
 
     // The input bus of the FIFO
-    .s_axis_tdata (slice_tdata ),
-    .s_axis_tkeep (HAS_TKEEP ? slice_tkeep : -1),
-    .s_axis_tlast (slice_tlast ),
-    .s_axis_tvalid(slice_tvalid),
-    .s_axis_tready(slice_tready),
+    .s_axis_tdata (slice0_tdata ),
+    .s_axis_tkeep (HAS_TKEEP ? slice0_tkeep : -1),
+    .s_axis_tlast (slice0_tlast ),
+    .s_axis_tvalid(slice0_tvalid),
+    .s_axis_tready(slice0_tready),
 
     // The output bus of the FIFO
     .m_axis_tdata (cdc_tdata ),
@@ -215,6 +211,42 @@ i_packet_fifo
     .wr_data_count_axis(),
     .injectdbiterr_axis(),
     .injectsbiterr_axis()
+);
+//=============================================================================
+
+
+//=============================================================================
+// AXI stream register slice between the packetizing FIFO and the output
+//=============================================================================
+axis_slice #
+(
+    .DATA_WIDTH     (DW),
+    .LAST_ENABLE    (1),
+    .USER_ENABLE    (0),
+    .USER_WIDTH     (1)
+)
+tx_slice_1
+(
+    .clk          (cmac_clk),
+    .rst          (~cmac_resetn),
+
+    .s_axis_tdata (packet_tdata ),
+    .s_axis_tkeep (HAS_TKEEP ? packet_tkeep : -1),
+    .s_axis_tlast (packet_tlast ),
+    .s_axis_tvalid(packet_tvalid),
+    .s_axis_tready(packet_tready),
+    .s_axis_tuser (0),
+    .s_axis_tid   (0),
+    .s_axis_tdest (0),
+
+    .m_axis_tdata (m_axis_tdata ),
+    .m_axis_tkeep (m_axis_tkeep ),
+    .m_axis_tlast (m_axis_tlast ),
+    .m_axis_tvalid(m_axis_tvalid),
+    .m_axis_tready(m_axis_tready),
+    .m_axis_tuser (0),
+    .m_axis_tid   (0),
+    .m_axis_tdest (0)
 );
 //=============================================================================
 
