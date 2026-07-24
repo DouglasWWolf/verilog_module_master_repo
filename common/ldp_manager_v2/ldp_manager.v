@@ -13,6 +13,9 @@
 //                       buffers in host RAM
 //
 // 14-Jun-26  DWW     4  Integrated with new ldp_buffer module
+//
+// 24-Jul-26  DWW     5  Added port "pci_frame_counter" to expose the 
+//                       "count of frames written to host RAM" to software
 //=============================================================================
 
 /* 
@@ -70,6 +73,9 @@ module ldp_manager # (parameter DW=512, AW=64)
     input[7:0]     axis_ferr_tdata,
     input          axis_ferr_tvalid,
     output reg     axis_ferr_tready,
+
+    // Counts the number of frames written to host-RAM
+    output reg[31:0] pci_frame_counter,
 
     // The highest and lowest number of clock cycles to emit an entire frame
     output reg[31:0] max_frame_cycles, min_frame_cycles,
@@ -694,6 +700,7 @@ always @(posedge clk) begin
         wsm_state         <= WSM_WAIT_FIRST_FD;
         max_frame_cycles  <= 0;
         min_frame_cycles  <= -1;
+        pci_frame_counter <= 0;
     end 
 
     else case(wsm_state)
@@ -745,6 +752,7 @@ always @(posedge clk) begin
 
         WSM_WRITE_FC1:
            if (M_AXI_WVALID & M_AXI_WREADY) begin
+                pci_frame_counter <= frame_counter;
                 if (elapsed > max_frame_cycles)
                     max_frame_cycles <= elapsed;
                 if (elapsed < min_frame_cycles)

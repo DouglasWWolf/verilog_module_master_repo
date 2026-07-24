@@ -66,5 +66,7 @@
 
  08-Jul-2026  1.26.0  DWW  Added "axis_slice.v", "cmac_rx_cdc.v" and "cmac_tx_cdc.v"
 
+ 24-Jul-2026  1.27.0  DWW  Exposed a pair of frame-counters in "ldp_manager_v2"
+
 ================================================================================================
 

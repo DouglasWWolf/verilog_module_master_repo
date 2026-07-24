@@ -5,6 +5,9 @@
 //   Date     Who   Ver  Changes
 //====================================================================================
 // 12-Jun-26  DWW     1  Initial creation
+//
+// 24-Jul-26  DWW     2  Now exposing "inp_frame_number" as a port so software can
+//                       see our count of incoming frames.
 //====================================================================================
 
 /*
@@ -65,6 +68,9 @@ module ldp_buffer #
     output              axis_ferr_tvalid,
     input               axis_ferr_tready,
 
+    // As data gets written to the frame-data FIFO, we assocate a frame-number with it
+    output reg[31:0] inp_frame_number,
+
     // Number of bytes in a frame
     input[31:0] frame_size,
 
@@ -99,8 +105,6 @@ wire[31:0] LAST_FRAME_CYCLE = CYCLES_PER_FRAME - 1;
 // be written into the data_fifo
 reg abort_frame_input;
 
-// As data gets written to the FIFO, we assocate a frame-number with it
-reg[31:0] inp_frame_number;
 
 // If we ever drop a data-cycle during a frame because the FIFO was full,
 // we will not write any data to the FIFO for the rest of the frame. 
