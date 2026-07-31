@@ -8,6 +8,9 @@
 //
 // 24-Jul-26  DWW     2  Now exposing "inp_frame_number" as a port so software can
 //                       see our count of incoming frames.
+//
+// 31-Jul-26  DWW     3  Added "trigger_frame_drop_stb" mechansim to allow external
+//                       logic to trigger a frame-drop for testing.
 //====================================================================================
 
 /*
@@ -84,6 +87,10 @@ module ldp_buffer #
     // to keep up with the required bandwidth
     output fatal_overflow_stb,
 
+    // When this strobes high, it causes either the current frame in-progress
+    // or the next frame to be dropped, as though the input FIFO had overflowed
+    input trigger_frame_drop_stb,
+
     // This is strictly a debugging aid and is not typically 
     // used in a deployed design.  This is asserted any time
     // data arriving on the input will be discarded instead
@@ -105,10 +112,15 @@ wire[31:0] LAST_FRAME_CYCLE = CYCLES_PER_FRAME - 1;
 // be written into the data_fifo
 reg abort_frame_input;
 
+// When this is asserted, the next incoming cycle of frame-data will
+// trigger a simulated FIFO overflow, causing the frame to be dropped.
+reg trigger_frame_drop;
 
 // If we ever drop a data-cycle during a frame because the FIFO was full,
 // we will not write any data to the FIFO for the rest of the frame. 
-wire fd_fifo_in_tvalid = axis_fd_in_tvalid && !abort_frame_input;
+wire fd_fifo_in_tvalid =  axis_fd_in_tvalid
+                       && !abort_frame_input
+                       && !trigger_frame_drop;
 
 // In the data_fifo, the TUSER data is the frame number
 wire[7:0] fd_fifo_in_tuser = inp_frame_number[7:0];
@@ -116,7 +128,11 @@ wire[7:0] fd_fifo_in_tuser = inp_frame_number[7:0];
 // The data_fifo asserts this when it's ready for incoming data
 wire fd_fifo_in_tready;
 
-// Assign this sigal strictly for the sake of debugging with an ILA
+// We're keeping track of when the FIFO is full, or when we're simulating it
+// being full.
+wire fd_fifo_full = (fd_fifo_in_tready == 0) | (trigger_frame_drop == 1);
+
+// Assign this signal strictly for the sake of debugging with an ILA
 assign axis_fd_in_tready = fd_fifo_in_tready;
 
 // The number of input data-cycles that we've seen in this frame.  This includes
@@ -143,7 +159,7 @@ reg frame_status_stb;
 wire frame_status_in_ready;
 
 // When this is true, we're discarding input data
-assign discard_input = !fd_fifo_in_tready || abort_frame_input;
+assign discard_input = fd_fifo_full || abort_frame_input;
 
 // If we one of our support FIFOs overflows, all bets are off
 assign fatal_overflow_stb = (frame_status_stb    && !frame_status_in_ready)
@@ -170,11 +186,16 @@ always @(posedge clk) begin
     drop_fifo_in_tvalid <= 0;
     frame_status_stb    <= 0;
 
+    // Latch the "trigger_frame_drop_stb" signal
+    if (trigger_frame_drop_stb)
+        trigger_frame_drop <= 1;
+
     if (resetn == 0) begin
         abort_frame_input    <= 0;
         dropped_frame_number <= 0;
         frame_cycles_in      <= 0;
         inp_frame_number     <= 1;
+        trigger_frame_drop   <= 0;
     end 
 
     // On every cycle if incoming data...
@@ -183,9 +204,10 @@ always @(posedge clk) begin
         // If this is the first cycle of the frame to be dropped
         // because the FIFO is full, abort the frame and write
         // an entry into the "drop_fifo"    
-        if (!fd_fifo_in_tready && !abort_frame_input) begin
+        if (fd_fifo_full && !abort_frame_input) begin
             abort_frame_input   <= 1;
             drop_fifo_in_tvalid <= 1;
+            trigger_frame_drop  <= 0;
         end
          
         if (frame_cycles_in < LAST_FRAME_CYCLE)

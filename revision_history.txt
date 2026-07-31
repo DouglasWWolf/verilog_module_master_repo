@@ -68,5 +68,9 @@
 
  24-Jul-2026  1.27.0  DWW  Exposed a pair of frame-counters in "ldp_manager_v2"
 
+ 31-Jul-2026  1.28.0  DWW  Added a "trigger_frame_drop_stb" signal to "ldp_manager_v2"
+                           to provide a test mechanism that will cause a frame-drop    
+                           as though the input FIFO is full.
+
 ================================================================================================
 
