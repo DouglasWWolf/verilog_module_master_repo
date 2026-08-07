@@ -12,6 +12,9 @@
 //
 // 21-Apr-26  DWW  1002  Fixed bug in the write-logic that could cause an 
 //                       incorrect write-address to be used
+//
+// 07-Aug-26  DWW  1003  Fixed *another* bug in the write-logic that could cause
+//                       an incorrect write-address to be used!
 //====================================================================================
 
 
@@ -286,9 +289,9 @@ always @(posedge clk) begin
             end
 
         1:  begin
-                if (AXI_AWVALID & AXI_WREADY) begin // If this is the write-address handshake...
-                    ashi_waddr  <= AXI_AWADDR;      //   Latch the address we're writing to
-                    AXI_AWREADY <= 0;               //   We are no longer ready to accept a new address
+                if (AXI_AWVALID & AXI_AWREADY) begin // If this is the write-address handshake...
+                    ashi_waddr  <= AXI_AWADDR;       //   Latch the address we're writing to
+                    AXI_AWREADY <= 0;                //   We are no longer ready to accept a new address
                 end
 
                 if (AXI_WVALID & AXI_WREADY) begin  // If this is the write-data handshake...

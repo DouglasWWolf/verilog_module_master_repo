@@ -72,5 +72,7 @@
                            to provide a test mechanism that will cause a frame-drop    
                            as though the input FIFO is full.
 
+ 07-Aug-2026  1.30.0  DWW  Fixed a bug in the axi4_lite_slave.v write-logic that could
+                           cause the wrong address to be used(!)
 ================================================================================================
 
