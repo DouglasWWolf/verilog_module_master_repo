@@ -22,6 +22,9 @@
 //
 // 17-Jun-25  DWW  1006  RDMX user-field and flags are now carried in the TUSER/AWUSER
 //                       ports
+//
+// 12-Aug-26  DWW  1007  Changed UW from 40 to 56, to make room for the new 
+//                       "udp_dst_port" signal that we carry in user data
 //====================================================================================
 
 /*
@@ -59,7 +62,7 @@ module rdmx_xmit #
     parameter AW = 64,
 
     // The AWUSER field is used to keep track of the RDMX user-field and flags
-    parameter UW = 40,
+    parameter UW = 56,
 
     // This can be either "common_clock" or "independent clock".   Use
     // "independent clock" if the two clock inputs are not being fed 
@@ -84,10 +87,6 @@ module rdmx_xmit #
     // The source UDP ports
     parameter[15:0] SOURCE_PORT = 1000,
        
-    // The destination port on the remote server.  
-    // << THIS MUST MATCH "REMOTE_SERVER_PORT" in rdmx_pkt_filter.v >>>
-    parameter[15:0] REMOTE_SERVER_PORT = 32002,
-
     // This must be at least as large as the number of the smallest packets that
     // can fit into the data FIFO.   Min is 16.  
     parameter MAX_PACKET_COUNT = 256,
@@ -273,7 +272,6 @@ rdmx_xmit_be #
     .DST_IP2            (DST_IP2           ),
     .DST_IP3            (DST_IP3           ),
     .SOURCE_PORT        (SOURCE_PORT       ),
-    .REMOTE_SERVER_PORT (REMOTE_SERVER_PORT),
     .MAX_PACKET_COUNT   (MAX_PACKET_COUNT  ),
     .DATA_FIFO_DEPTH    (DATA_FIFO_DEPTH   )
 )

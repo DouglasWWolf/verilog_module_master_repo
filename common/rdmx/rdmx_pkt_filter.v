@@ -5,26 +5,21 @@
 //   Date     Who   Ver  Changes
 //===================================================================================================
 // 11-Nov-23  DWW     1  Initial creation
-// 12-Jan-24  DWW  1001  Changed name to RDMX
+// 12-Jan-24  DWW     2  Changed name to RDMX
+// 14-Aug-26  DWW     3  No longer filtering on UDP port number
 //===================================================================================================
 
 /*
 
-
     This module receives packets on an AXI-Stream bus and throws away any packet
     that isn't an RDMX packet.   Valid RDMX packets are passed on to the output.
- 
 
 */
 
 module rdmx_pkt_filter #
 (
-    parameter DATA_WBITS         = 512,
-    parameter DATA_WBYTS         = (DATA_WBITS / 8),
-    parameter LOCAL_SERVER_PORT  = 11111,
-
-    // <<< This must match REMOTE_SERVER_PORT in rdmx_xmit.v !! >>>
-    parameter REMOTE_SERVER_PORT = 32002    
+    parameter DATA_WBITS = 512,
+    parameter DATA_WBYTS = (DATA_WBITS / 8)
 )
 (
     input wire  clk, resetn,
@@ -34,10 +29,8 @@ module rdmx_pkt_filter #
     //==========================================================================
     input[DATA_WBITS-1:0]  AXIS_IN_TDATA,
     input[DATA_WBYTS-1:0]  AXIS_IN_TKEEP,
-    input                  AXIS_IN_TLAST,
-    input                  AXIS_IN_TUSER,
     input                  AXIS_IN_TVALID,
-
+    input                  AXIS_IN_TLAST,
     output                 AXIS_IN_TREADY,
     //==========================================================================
 
@@ -47,9 +40,8 @@ module rdmx_pkt_filter #
     //==========================================================================
     output[DATA_WBITS-1:0] AXIS_OUT_TDATA,
     output[DATA_WBYTS-1:0] AXIS_OUT_TKEEP,
+    output                 AXIS_OUT_TVALID,
     output                 AXIS_OUT_TLAST,
-    output                 AXIS_OUT_TUSER,
-    output                 AXIS_OUT_TVALID,    
     input                  AXIS_OUT_TREADY
     //==========================================================================
 
@@ -60,7 +52,6 @@ localparam RDMX_MAGIC = 16'h0122;
 
 // The entire output stream (other than TVALID) is driven by the input stream
 assign AXIS_OUT_TDATA = AXIS_IN_TDATA;
-assign AXIS_OUT_TUSER = AXIS_IN_TUSER;
 assign AXIS_OUT_TKEEP = AXIS_IN_TKEEP;
 assign AXIS_OUT_TLAST = AXIS_IN_TLAST;
 assign AXIS_IN_TREADY = AXIS_OUT_TREADY;
@@ -127,9 +118,7 @@ assign
 
 // The first cycle of a packet is considered an RDMX packet if the protocol is
 // UDP (i.e., 17) and the port number is one of the RDMX UDP port numbers
-wire is_rdmx_imm = (ip4_ttl_prot[7:0] == 17)
-                 & (udp_dst_port      == LOCAL_SERVER_PORT || udp_dst_port == REMOTE_SERVER_PORT)
-                 & (rdmx_magic        == RDMX_MAGIC);
+wire is_rdmx_imm = (ip4_ttl_prot[7:0] == 17) & (rdmx_magic == RDMX_MAGIC);
 reg  is_rdmx_reg;
 
 // This will be high on any data-cycle of an RDMX packet

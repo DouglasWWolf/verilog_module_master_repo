@@ -7,6 +7,10 @@
 //   Date     Who   Ver  Changes
 //====================================================================================
 // 29-Feb-24  DWW     2  Fixed bug with the meta-data registers being too small
+//
+// 12-Aug-26  DWW     3  Added parameter UW 
+//                       Now passing the udp_dst_port in M_AXI_AWUSER
+//                       Added support for frame-data "buckets"
 //====================================================================================
 
 
@@ -20,11 +24,31 @@
      When writing frame data, the addresses they are written to are in a circular ring
      buffer.   Meta-data are written to a separate ring buffer.
 
+
+     --------- Frame Data Buckets ---------
+
+     This module can divide frame-data into "buckets" on a per-frame basis, with each 
+     frame belonging to exactly 1 "bucket".   A "bucket" corresponds to a unique UDP
+     port number, and all frame-data packets that are in a given "bucket" will all share
+     the same UDP destination port.   A "bucket" can hold a finite number of frames, 
+     defined by "FD_BUCKET_SIZE".   The number of available "buckets" is defined by
+     "FD_BUCKET_COUNT".   "FD_BUCKET_COUNT" must be a power of two.
+
+     We also define a "period" consisting of one or more frames.  No "bucket" will
+     ever contain frame-data from more than 1 period.  Because the number of frames
+     in a period is not neccessarily evenly divisible by the number of frames that
+     will fit into a bucket, the last bucket for a given period may not contain a
+     full set of frames.
+
+     We divide frames into "buckets" and assign a unique UDP port number to each
+     bucket so that downstream processes can perform UDP-based packet-steering
+     in hardware.
+
 */
 
 module rdmx_shim #
 (
-    parameter DATA_WBITS = 512
+    parameter DATA_WBITS = 512, UW=56
 )
 (
     input clk, resetn,
@@ -47,6 +71,25 @@ module rdmx_shim #
     // The remote address where the frame-counter should be stored
     input[63:0] FC_ADDR,
 
+    // UDP destination port for meta-data packets
+    input [15:0] MD_UDP_PORT,
+    
+    // UDP destination port for frame-counter packets
+    input [15:0] FC_UDP_PORT,
+    
+    // The base UDP port for frame-data packets
+    input [15:0] FD_UDP_PORT_BASE,
+    
+    // The number of frames in a "period". (basically, a bright-cycle)
+    input [15:0] FRAMES_PER_PERIOD,
+    
+    // The number of frame-data "buckets" that our frame-data goes into.
+    // Each "bucket" corresponds to a unique UDP port.
+    input [15:0] FD_BUCKET_COUNT,
+    
+    // THe number of frames that fit int a single frame-data "bucket"
+    input [15:0] FD_BUCKET_SIZE,
+
     //====================   The frame data input stream   =====================
     input [DATA_WBITS-1:0] AXIS_FD_TDATA,
     input                  AXIS_FD_TVALID,
@@ -65,7 +108,7 @@ module rdmx_shim #
 
     // "Specify write address"              -- Master --    -- Slave --
     output reg [63:0]                        M_AXI_AWADDR,
-    output reg [39:0]                        M_AXI_AWUSER,
+    output reg [UW-1:0]                      M_AXI_AWUSER,
     output reg [7:0]                         M_AXI_AWLEN,
     output     [2:0]                         M_AXI_AWSIZE,
     output     [3:0]                         M_AXI_AWID,
@@ -148,9 +191,17 @@ reg[DATA_WBITS-1:0] metadata[0:1];
 // The AWUSER field will always contain our frame-counter
 wire[31:0] fc_plus_one = (FRAME_COUNT + 1);
 
-// Create a byte-swapped version of the data on the input stream
-//wire[DATA_WBITS-1:0] AXIS_FD_tdata_swapped;
-//byte_swap#(DATA_WBITS) bs2(.I(AXIS_FD_TDATA), .O(AXIS_FD_tdata_swapped));
+// The count of frames in the current period.  1-based
+reg[31:0] period_fc;
+
+// The count of frames in the current frame-data bucket.  1-based
+reg[31:0] bucket_fc;
+
+// The current frame-data bucket number.  0-based
+reg[15:0] fd_bucket;
+
+// Compute the UDP destination port for the current frame-data bucket
+wire[15:0] fd_udp_port = FD_UDP_PORT_BASE + fd_bucket;
 
 //=============================================================================
 // This block computes the number of outgoing packets per data-frame
@@ -375,8 +426,11 @@ end
 //-----------------------------------------------------------------------------
 always @* begin
     case (output_mode)
-        OM_FC   :   M_AXI_AWUSER = {8'b1, fc_plus_one};
-        default :   M_AXI_AWUSER = {8'b0, fc_plus_one};
+        OM_FC   :   M_AXI_AWUSER = {FC_UDP_PORT, 8'b1, fc_plus_one};
+        OM_MD1  :   M_AXI_AWUSER = {MD_UDP_PORT, 8'b0, fc_plus_one};
+        OM_MD2  :   M_AXI_AWUSER = {MD_UDP_PORT, 8'b0, fc_plus_one};
+        OM_FD   :   M_AXI_AWUSER = {fd_udp_port, 8'b0, fc_plus_one};
+        default :   M_AXI_AWUSER = 32'hDEAD_BEEF;
     endcase
 end
 //-----------------------------------------------------------------------------
@@ -477,18 +531,21 @@ always @(posedge clk) begin
     fetch_metadata <= 0;
 
     if (resetn == 0) begin
-        fsm_state   <= FSM_RESET;
-        FRAME_COUNT <= 0;
+        fsm_state <= FSM_RESET;
+    end
 
-    end else case(fsm_state)
+    else case(fsm_state)
 
         FSM_RESET:
             fsm_state <= FSM_START;
 
         FSM_START:
             begin
-                beat         <= 0;
                 FRAME_COUNT  <= 0;
+                period_fc    <= 1;  // Frame number within period
+                bucket_fc    <= 1;  // Frame number within bucket
+                fd_bucket    <= 0;  // Current frame-data bucket number
+                beat         <= 0;
                 packet_count <= 1;
                 fsm_state    <= FSM_XFER_PACKET;
             end
@@ -525,6 +582,32 @@ always @(posedge clk) begin
         // Wait for the frame-counter to be output
         FSM_OUTPUT_FC:
             if (M_AXI_WVALID & M_AXI_WREADY) begin
+                
+                // If this was the last frame of the period, advance
+                // the frame-data bucket number (i.e, "fd_bucket")
+                if (period_fc == FRAMES_PER_PERIOD) begin
+                    fd_bucket <= (fd_bucket + 1) & (FD_BUCKET_COUNT - 1);
+                    bucket_fc <= 1;
+                end
+
+                // Otherwise, if this is the last frame that fits in the 
+                // current frame-data bucket, advance the bucket number
+                else if (bucket_fc == FD_BUCKET_SIZE) begin
+                    fd_bucket <= (fd_bucket + 1) & (FD_BUCKET_COUNT - 1);
+                    bucket_fc <= 1;
+                end
+
+                // Otherwise, keep track of the number of frames in this bucket
+                else bucket_fc <= bucket_fc + 1;
+
+                // "period_fc" counts from 1 to FRAMES_PER_PERIOD
+                if (period_fc < FRAMES_PER_PERIOD)
+                    period_fc <= period_fc + 1;
+                else
+                    period_fc <= 1;
+
+                // Keep track of the frame counter, and the packet number within
+                // the current frame
                 FRAME_COUNT  <= FRAME_COUNT + 1;
                 packet_count <= 1;
                 fsm_state    <= FSM_XFER_PACKET;

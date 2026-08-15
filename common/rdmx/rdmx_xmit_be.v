@@ -12,6 +12,9 @@
 // 05-Nov-24  DWW  1002  Added "user-field" to the RDMX header
 //
 // 26-Mar-25  DWW  1003  Fixed AXIS_TX_TKEEP width from "DW" to "DW/8"
+//
+// 14-Aug-26  DWW  1004  Now supporting passing UDP destination port in field
+//                       AXIS_ADDR_TUSER
 //====================================================================================
 /*
 
@@ -61,8 +64,8 @@ module rdmx_xmit_be #
     // Width of an AXI address in bits
     parameter AW = 64,
 
-    // Width of the "User field" and "flags" in the RDMX header, in bits
-    parameter UW = 40,
+    // Width of "{udp_dst_port, rdmx_flags, rdmx_user_field"}"
+    parameter UW = 56,
 
     // Last octet of the source MAC address
     parameter[ 7:0] SRC_MAC = 2,    
@@ -79,13 +82,9 @@ module rdmx_xmit_be #
     parameter[ 7:0] DST_IP2 = 1,
     parameter[ 7:0] DST_IP3 = 255,
     
-    // The source UDP ports
+    // The source UDP port
     parameter[15:0] SOURCE_PORT = 1000,
-       
-    // The destination port on the remote server.  
-    // << THIS MUST MATCH "REMOTE_SERVER_PORT" in rdmx_pkt_filter.v >>>
-    parameter[15:0] REMOTE_SERVER_PORT = 32002,
-
+        
     // This must be at least as large as the number of the smallest packets that
     // can fit into the data FIFO.   Min is 16.  
     parameter MAX_PACKET_COUNT = 256,
@@ -235,7 +234,6 @@ localparam[15:0] ip4_dstip_l    = {DST_IP2, DST_IP3};
 
 // The statically declared UDP header fields
 localparam[15:0] udp_src_port   = SOURCE_PORT;
-localparam[15:0] udp_dst_port   = REMOTE_SERVER_PORT;
 localparam[15:0] udp_checksum   = 0;
 
 // 2 bytes of magic number
@@ -243,6 +241,11 @@ localparam[15:0] rdmx_magic = 16'h0122;
 
 // 6 bytes of reserved area in the RDMX header
 localparam[5*8-1:0] rdmx_reserved = 0;
+
+// We extract these three fields from fta_out_tuser
+wire[31:0]       rdmx_user_field;
+wire[ 7:0]       rdmx_flags;
+wire[15:0]       udp_dst_port;
 
 // Compute both the IPv4 packet length and UDP packet length
 wire[15:0]       ip4_length     = IP_HDR_LEN + UDP_HDR_LEN + RDMX_HDR_LEN + payload_length;
@@ -256,7 +259,7 @@ wire[31:0] ip4_cs32 = ip4_ver_dsf
                     + ip4_srcip_h
                     + ip4_srcip_l
                     + ip4_dstip_h
-                    + ip4_dstip_l
+                    + ip4_dstip_l 
                     + ip4_length;
 
 // Compute the 16-bit IPv4 checksum
@@ -267,13 +270,15 @@ wire[15:0] ip4_checksum = ~(ip4_cs32[15:0] + ip4_cs32[31:16]);
 wire[63:0] rdmx_target_addr = (ftaout_tready & ftaout_tvalid) ?
                                ftaout_tdata : ftaout_tdata_latched;
 
-// This is the RDMX user field of the outgoing packet
-wire[31:0] rdmx_user_field  = (ftaout_tready & ftaout_tvalid) ?
-                               ftaout_tuser[31:00] : ftaout_tuser_latched[31:00];
+// Fetch these fields from either "ftaout_tuser", or from the latched version of
+// that signal
+assign 
+{
+    udp_dst_port,
+    rdmx_flags,
+    rdmx_user_field
+} = (ftaout_tready & ftaout_tvalid) ? ftaout_tuser : ftaout_tuser_latched;
 
-// This is the RDMX "flags" field of the outgoing packet
-wire[ 7:0] rdmx_flags       = (ftaout_tready & ftaout_tvalid) ?
-                               ftaout_tuser[39:32] : ftaout_tuser_latched[39:32];
 
 // This number increments by 1 on every packet
 reg[15:0] rdmx_seq_num;

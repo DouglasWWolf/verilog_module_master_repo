@@ -74,5 +74,8 @@
 
  07-Aug-2026  1.30.0  DWW  Fixed a bug in the axi4_lite_slave.v write-logic that could
                            cause the wrong address to be used(!)
+
+ 15-Aug-2026  1.31.0  DWW  Updated to rdmx and mindy_core to facilitate packet
+                           steering
 ================================================================================================
 
