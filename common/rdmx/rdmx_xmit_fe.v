@@ -119,6 +119,12 @@ module rdmx_xmit_fe #
     //==========================================================================
 );
 
+// No one reads data from us on the S_AXI interface
+assign S_AXI_ARREADY = 0;
+assign S_AXI_RDATA   = 0; 
+assign S_AXI_RVALID  = 0;  
+assign S_AXI_RRESP   = 0; 
+assign S_AXI_RLAST   = 0;  
 
 //=============================================================================
 // This block counts the number of one bits in S_AXI_WSTRB, thereby determining

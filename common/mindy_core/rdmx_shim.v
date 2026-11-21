@@ -11,6 +11,8 @@
 // 12-Aug-26  DWW     3  Added parameter UW 
 //                       Now passing the udp_dst_port in M_AXI_AWUSER
 //                       Added support for frame-data "buckets"
+//
+// 18-Nov-26  DWW     4  Tied off the unused read-side ports of M_AXI
 //====================================================================================
 
 
@@ -159,6 +161,18 @@ module rdmx_shim #
 // The width of a meta-data in bytes
 localparam METADATA_WIDTH = 128;
 
+// We don't issue any read transactions on M_AXI
+assign M_AXI_ARADDR  = 0; 
+assign M_AXI_ARVALID = 0;  
+assign M_AXI_ARPROT  = 0;  
+assign M_AXI_ARLOCK  = 0;  
+assign M_AXI_ARID    = 0;
+assign M_AXI_ARLEN   = 0; 
+assign M_AXI_ARBURST = 0;   
+assign M_AXI_ARCACHE = 0;   
+assign M_AXI_ARQOS   = 0; 
+assign M_AXI_RREADY  = 0;  
+ 
 // Compute the number of data-cycles in an outgoing packet
 wire[7:0] cycles_per_packet = PACKET_SIZE / (DATA_WBITS/8);
 

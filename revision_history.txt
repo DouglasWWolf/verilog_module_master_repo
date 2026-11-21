@@ -77,5 +77,7 @@
 
  15-Aug-2026  1.31.0  DWW  Updated to rdmx and mindy_core to facilitate packet
                            steering
+
+ 18-Nov-2026  1.32.0  DWW  Tied off unused AXI interface ports in rdmx and mindy-core
 ================================================================================================
 

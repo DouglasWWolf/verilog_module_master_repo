@@ -7,6 +7,8 @@
 // 30-Oct-23  DWW     1  Initial creation
 //
 // 12-Jan-24  DWW  1001  Changed name to RDMX
+//
+// 18-Nov-26  DWW  1002  Tied the unused ports on the read-side of M_AXI to 0
 //===================================================================================================
 
 /*
@@ -110,6 +112,19 @@ reg[1:0] ism_state;
 localparam ISM_STARTING     = 0;
 localparam ISM_WAIT_FOR_HDR = 1;
 localparam ISM_XFER_PACKET  = 2;
+
+// We don't read from the M_AXI interface
+assign M_AXI_ARADDR  = 0;   
+assign M_AXI_ARVALID = 0;       
+assign M_AXI_ARPROT  = 0;        
+assign M_AXI_ARLOCK  = 0;         
+assign M_AXI_ARID    = 0;       
+assign M_AXI_ARLEN   = 0;       
+assign M_AXI_ARBURST = 0;          
+assign M_AXI_ARCACHE = 0;           
+assign M_AXI_ARQOS   = 0;         
+assign M_AXI_RREADY  = 0;      
+
 
 // We're always ready to receive an AXI "write acknowledgement"
 assign M_AXI_BREADY = 1;
