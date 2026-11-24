@@ -79,5 +79,7 @@
                            steering
 
  18-Nov-2026  1.32.0  DWW  Tied off unused AXI interface ports in rdmx and mindy-core
+
+ 23-Nov-2026  1.33.0  DWW  Added modules "switch_debounce.v" and "gen_sync.v"
 ================================================================================================
 
